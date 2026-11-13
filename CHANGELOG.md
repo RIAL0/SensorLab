@@ -2,6 +2,12 @@
 
 ## 1.7 - first public release
 
+The first public release, with 16 tools: WiFi Scan, WiFi Monitor, BLE Scan, Signal Hunt, Mic Spectrum,
+Sound Player, IMU Motion, File Manager, Text Editor, IR + LED, Battery, Chip Info, GPIO Pins, I2C Scan,
+Keys + Speaker and Screen.
+
+New since 1.6:
+
 - **Signal Hunt** tool: lock on to one WiFi access point or BLE device and follow its signal with a
   large reading, warmer / colder indicator, history graph and Geiger-style beeps.
 - File Manager: full SD card report (identification registers, filesystem, space).

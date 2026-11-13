@@ -50,6 +50,26 @@ jobs:
           name: SensorLab-firmware
           path: SensorLab-CardputerADV-*.bin
 
+      # Release notes = this version's section of CHANGELOG.md, plus install instructions.
+      - name: Write release notes
+        run: |
+          NUM="${VERSION#v}"
+          awk -v ver="$NUM" '
+            /^## / { if (found) exit; if ($2 == ver) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > section.md
+          {
+            echo "## What's new in ${VERSION}"
+            if [ -s section.md ]; then cat section.md; else echo; echo "See the changelog."; echo; fi
+            echo "## Install"
+            echo
+            echo "1. Download \`SensorLab-CardputerADV-${VERSION}.bin\` below and copy it to the microSD card."
+            echo "2. In [M5Launcher](https://github.com/bmorcelli/Launcher), open **SD**, select the file and choose **Install**."
+            echo
+            echo "For the M5Stack Cardputer ADV. Full documentation and key maps are in the [README](https://github.com/${GITHUB_REPOSITORY}#readme); the complete history is in the [changelog](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)."
+          } > release_notes.md
+          cat release_notes.md
+
       # Runs for a pushed v* tag, or for a manual run that names a version.
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v') || inputs.version != ''
@@ -59,4 +79,4 @@ jobs:
           name: SensorLab ${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           files: SensorLab-CardputerADV-*.bin
-          generate_release_notes: true
+          body_path: release_notes.md
