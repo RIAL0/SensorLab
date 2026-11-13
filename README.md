@@ -41,7 +41,7 @@ was not detected; tools that depend on ADV-only parts (the IMU, the ES8311 codec
 
 ### With M5Launcher (recommended)
 
-1. Download `SensorLab-CardputerADV-vX.Y.bin` from the [`release`](release) folder.
+1. Download `SensorLab-CardputerADV-vX.Y.bin` from the [latest release](https://github.com/RIAL0/SensorLab/releases/latest), or from the [`release`](release) folder.
 2. Copy it to the microSD card.
 3. Start the Cardputer in Launcher, open **SD**, select the file and choose **Install**.
 
@@ -374,8 +374,8 @@ pio run
 ```
 
 The image is written to `.pio/build/cardputer-adv/firmware.bin`. Every push is also built by the
-workflow in [`.github/workflows/build.yml`](.github/workflows/build.yml), and pushing a tag such as
-`v1.8` publishes the image as a GitHub release.
+workflow in [`.github/workflows/build.yml`](.github/workflows/build.yml). To publish a GitHub
+release, run that workflow from the Actions tab with a version such as `v1.8`, or push a `v*` tag.
 
 ### Project layout
 
