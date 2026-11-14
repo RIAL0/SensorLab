@@ -128,7 +128,7 @@ String wifiVendor(const uint8_t* m);   // shared OUI lookup (app_wifi.cpp)
 // ---- nicknames. A device gets one when the user tags it (T) or when a connection reveals its
 // name and model. Devices with a fixed address are remembered in /SensorLab/ble_names.csv;
 // devices with a rotating address keep theirs only until the address changes.
-struct Nick { uint8_t addr[6]; char name[30]; };
+struct Nick { uint8_t addr[6]; char name[30]; bool mine; };   // mine = typed by the user (T), not learned on connect
 static Nick s_nick[48];
 static volatile int s_nNick = 0;
 static bool s_nickLoaded = false;
@@ -139,11 +139,28 @@ const char* bleNickname(const uint8_t* addrLE) {
   return nullptr;
 }
 
-static void nickPut(const uint8_t* addrLE, const char* name) {
-  for (int i = 0; i < s_nNick; i++) if (!memcmp(s_nick[i].addr, addrLE, 6)) { strlcpy(s_nick[i].name, name, sizeof(s_nick[i].name)); return; }
+bool bleNickIsMine(const uint8_t* addrLE) {
+  for (int i = 0; i < s_nNick; i++) if (!memcmp(s_nick[i].addr, addrLE, 6)) return s_nick[i].mine;
+  return false;
+}
+
+// List label for a tagged device: "*name" for your own tags, "+name" for labels learned on connect.
+String bleNickLabel(const uint8_t* addrLE) {
+  const char* n = bleNickname(addrLE);
+  if (!n) return "";
+  return String(bleNickIsMine(addrLE) ? "*" : "+") + n;
+}
+
+static void nickPut(const uint8_t* addrLE, const char* name, bool mine) {
+  for (int i = 0; i < s_nNick; i++) if (!memcmp(s_nick[i].addr, addrLE, 6)) {
+    if (s_nick[i].mine && !mine) return;             // a connect never overwrites a name you typed
+    strlcpy(s_nick[i].name, name, sizeof(s_nick[i].name)); s_nick[i].mine = mine;
+    return;
+  }
   if (s_nNick >= 48) return;
   memcpy(s_nick[s_nNick].addr, addrLE, 6);
   strlcpy(s_nick[s_nNick].name, name, sizeof(s_nick[s_nNick].name));
+  s_nick[s_nNick].mine = mine;
   s_nNick = s_nNick + 1;
 }
 
@@ -159,19 +176,21 @@ void bleNicknamesLoad() {
     if (l.length() > 18 && sscanf(l.c_str(), "%2x:%2x:%2x:%2x:%2x:%2x", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) == 6) {
       uint8_t a[6];
       for (int i = 0; i < 6; i++) a[i] = v[5 - i];
-      nickPut(a, l.substring(18).c_str());
+      String nm = l.substring(18);                    // a leading ~ marks a label learned on connect
+      bool mine = !nm.startsWith("~");
+      nickPut(a, mine ? nm.c_str() : nm.c_str() + 1, mine);
     }
   }
   if (f) f.close();
 }
 
 // fixed = the address does not rotate, so the nickname is worth saving to the card
-static void nickSet(const uint8_t* addrLE, const char* name, bool fixed) {
-  nickPut(addrLE, name);
+static void nickSet(const uint8_t* addrLE, const char* name, bool fixed, bool mine) {
+  nickPut(addrLE, name, mine);
   if (!fixed || !ui::sdMount()) return;
   File f = SD.open(NICK_FILE, FILE_APPEND);
   if (!f) return;
-  f.printf("%02X:%02X:%02X:%02X:%02X:%02X,%s\n", addrLE[5], addrLE[4], addrLE[3], addrLE[2], addrLE[1], addrLE[0], name);
+  f.printf("%02X:%02X:%02X:%02X:%02X:%02X,%s%s\n", addrLE[5], addrLE[4], addrLE[3], addrLE[2], addrLE[1], addrLE[0], mine ? "" : "~", name);
   f.close();
 }
 
@@ -222,12 +241,15 @@ String bleDescribe(const char* name, const uint8_t* mfg, uint8_t mfgLen, const c
     uint16_t id = mfg[0] | (mfg[1] << 8);
     if (id == 0x004C && mfgLen >= 3) {
       uint8_t t = mfg[2];
-      if (t == 0x07 && mfgLen >= 7) {                     // proximity pairing: 07 len 01 model(2) ...
-        uint16_t model = (mfg[5] << 8) | mfg[6];
-        const char* m = appleAudioModel(model);
-        if (m) return m;
-        char b[32]; snprintf(b, sizeof(b), "Apple audio (model %04X)", model);
-        return b;
+      if (t == 0x07) {                                    // proximity pairing: 07 len 01 model(2) ...
+        if (mfgLen >= 7 && mfg[4] == 0x01) {              // other prefixes carry an encrypted payload
+          uint16_t model = (mfg[5] << 8) | mfg[6];
+          const char* m = appleAudioModel(model);
+          if (m) return m;
+          char b[32]; snprintf(b, sizeof(b), "Apple audio %04X", model);
+          return b;
+        }
+        return "Apple AirPods / Beats";
       }
       if (t == 0x02) return "iBeacon";
       if (appleType(t)) return String("Apple ") + appleType(t);
@@ -334,8 +356,8 @@ static ScanCb s_cb;
 static bool addrFixed(const BleDev& d) { return d.addrType == 0 || (d.addrType == 1 && (d.addr[5] >> 6) == 3); }
 
 static String kindOf(const BleDev& d) {       // short human label for the list
-  const char* nk = bleNickname(d.addr);
-  if (nk) return String("*") + nk;            // * marks a device you tagged or connected to
+  String nk = bleNickLabel(d.addr);
+  if (nk.length()) return nk;                 // * = your tag, + = learned by connecting
   return bleDescribe(d.name, d.mfg, d.mfgLen, d.svc, d.svcDataUuid, d.svcData, d.svcDataLen, d.hasAppearance ? d.appearance : -1);
 }
 
@@ -560,8 +582,8 @@ static void gattExplore(const BleDev& d, NimBLEScan* scan) {
   if (gotName.length() || gotModel.length()) {
     String label = gotName.length() ? gotName : gotModel;
     if (gotName.length() && gotModel.length()) label += " (" + gotModel + ")";
-    nickSet(d.addr, label.substring(0, 28).c_str(), addrFixed(d));
-    lines.insert(lines.begin() + 1, "Now listed as\t*" + label);
+    nickSet(d.addr, label.substring(0, 28).c_str(), addrFixed(d), false);
+    lines.insert(lines.begin() + 1, "Now listed as\t+" + label);
   }
   ui::pager("BLE device contents", [&](std::vector<String>& L) { L = lines; }, 0, "ble_gatt");
 }
@@ -584,7 +606,7 @@ void appBle() {
   bool active = true, running = true;
 
   int sel = 0, top = 0, sortMode = 0, filter = 0;
-  static const char* const FILT[] = {"all", "near", "named", "no Apple", "connectable"};
+  static const char* const FILT[] = {"all", "my tags", "near", "named", "no Apple", "connectable"};
   int hidden = 0;
   uint32_t lastDraw = 0, rateAt = millis(), lastTotal = 0, rate = 0;
   std::vector<BleDev> snap;
@@ -611,13 +633,13 @@ void appBle() {
       if (running) scan->start(0, nullptr, false);
     }
     if (k.lc == 'x') { xSemaphoreTake(s_lock, portMAX_DELAY); s_nb = 0; xSemaphoreGive(s_lock); sel = 0; }
-    if (k.lc == 'f') { filter = (filter + 1) % 5; sel = top = 0; }
+    if (k.lc == 'f') { filter = (filter + 1) % 6; sel = top = 0; }
     if (k.lc == 't' && sel < (int)snap.size()) {       // give the device your own name
       const char* cur = bleNickname(snap[sel].addr);
       String nm = cur ? cur : "";
       if (ui::input("Your name for this device", nm, 26) && nm.length()) {
         bool fixed = addrFixed(snap[sel]);
-        nickSet(snap[sel].addr, nm.c_str(), fixed);
+        nickSet(snap[sel].addr, nm.c_str(), fixed, true);
         ui::toast(fixed ? "Tagged and saved to the SD card" : "Tagged until its address changes", C_OK, 1200);
       }
     }
@@ -655,10 +677,12 @@ void appBle() {
       snap.erase(std::remove_if(snap.begin(), snap.end(), [&](const BleDev& d) {
         bool apple = d.mfgLen >= 2 && d.mfg[0] == 0x4C && d.mfg[1] == 0x00;
         bool named = d.name[0] || bleNickname(d.addr);
+        bool mine = bleNickIsMine(d.addr);
         switch (filter) {
-          case 1: return d.rssi < -60;                    // near: roughly within a couple of metres
-          case 2: return !named;
-          case 3: return apple && !bleNickname(d.addr);   // tagged Apple devices stay visible
+          case 1: return !mine;                           // only devices you tagged yourself
+          case 2: return d.rssi < -60;                    // near: roughly within a couple of metres
+          case 3: return !named;
+          case 4: return apple && !mine;                  // hides Apple devices, even ones labelled by connecting
           default: return !d.connectable;
         }
       }), snap.end());

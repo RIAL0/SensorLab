@@ -156,14 +156,16 @@ service or appearance, or the manufacturer.
 | `A` | Active / passive scan |
 | `X` | Clear the list |
 | `S` | Save the list as CSV |
-| `F` | Filter: all, near (stronger than -60 dBm), named, no Apple, connectable |
+| `F` | Filter: all, my tags, near (stronger than -60 dBm), named, no Apple, connectable |
 | `T` | Tag the selected device with your own name |
 | `G` | Connect to the selected device and read it (see below) |
 
 **Finding your own device in a crowd.** Hold it next to the Cardputer and press `F` for the *near*
 filter, or use *no Apple* to hide the usual crowd of phones and earbuds. Then tag it with `T`, or
 connect with `G`: a successful connection labels the device with the name and model it reports.
-Tagged devices are marked with `*` and also appear in Signal Hunt. Devices with a fixed address are
+Your own tags are marked `*` and labels learned by connecting are marked `+`; both also appear in
+Signal Hunt. The *my tags* filter shows only the devices you named yourself, and *no Apple* hides
+every Apple device except those. Devices with a fixed address are
 remembered in `/SensorLab/ble_names.csv`; phones and earbuds rotate their address every 15 minutes
 or so, and their tag lasts only until that happens.
 
@@ -186,7 +188,7 @@ as you get closer.
 | Target list | `;` `.` | Move through the list |
 | Target list | `Tab` or `,` `/` | Switch between WiFi networks and BLE devices |
 | Target list | `Enter` | Lock on to the selected target |
-| Target list | `F` | BLE list filter: all, near, named, no Apple |
+| Target list | `F` | BLE list filter: all, my tags, near, named, no Apple |
 | Target list | `X` | Clear the list |
 | Target list | `M` | Sound on / off |
 | Tracking | `M` or `Space` | Sound on / off |

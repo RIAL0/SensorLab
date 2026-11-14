@@ -9,7 +9,8 @@
 #include <esp_wifi.h>
 
 void wifiQuietSta();                                                       // app_wifi.cpp
-const char* bleNickname(const uint8_t* addrLE);                            // app_ble.cpp
+String bleNickLabel(const uint8_t* addrLE);                                // app_ble.cpp
+bool bleNickIsMine(const uint8_t* addrLE);
 void bleNicknamesLoad();
 String bleDescribe(const char* name, const uint8_t* mfg, uint8_t mfgLen, const char* svcList,
                    const char* svcDataUuid, const uint8_t* svcData, uint8_t svcDataLen, int appearance);  // app_ble.cpp
@@ -20,7 +21,7 @@ struct Target {
   uint8_t addrType;      // BLE only
   uint8_t ch;            // WiFi only
   int8_t rssi;
-  uint8_t flags;         // BLE: 1 = Apple, 2 = has a broadcast name or a nickname
+  uint8_t flags;         // BLE: 1 = Apple, 2 = has a name or label, 4 = tagged by the user
   uint32_t seen;
 };
 
@@ -62,11 +63,12 @@ class HuntCb : public NimBLEAdvertisedDeviceCallbacks {
     for (int i = 0; i < a->getServiceUUIDCount() && svcs.length() < 60; i++) { svcs += a->getServiceUUID(i).toString().c_str(); svcs += ' '; }
     std::string sd = a->haveServiceData() ? a->getServiceData(0) : std::string();
     std::string sdu = a->haveServiceData() ? a->getServiceDataUUID(0).toString() : std::string();
-    const char* nk = bleNickname(ad);
-    if (nk) label = String("*") + nk;
+    String nkl = bleNickLabel(ad);
+    bool nk = nkl.length() > 0;
+    if (nk) label = nkl;
     else label = bleDescribe(a->haveName() ? a->getName().c_str() : "", (const uint8_t*)mfg.data(), mfg.size(), svcs.c_str(),
                              sdu.c_str(), (const uint8_t*)sd.data(), sd.size(), a->haveAppearance() ? a->getAppearance() : -1);
-    uint8_t fl = (mfg.size() >= 2 && (uint8_t)mfg[0] == 0x4C && mfg[1] == 0x00 ? 1 : 0) | (nk || a->haveName() ? 2 : 0);
+    uint8_t fl = (mfg.size() >= 2 && (uint8_t)mfg[0] == 0x4C && mfg[1] == 0x00 ? 1 : 0) | (nk || a->haveName() ? 2 : 0) | (bleNickIsMine(ad) ? 4 : 0);
     xSemaphoreTake(s_mux, portMAX_DELAY);
     if (s_list) {
       Target* t = nullptr;
@@ -199,8 +201,8 @@ void appHunt() {
   s_list = (Target*)calloc(MAXT, sizeof(Target));
   if (!s_list) { ui::toast("Out of memory", C_BAD); return; }
   bool ble = false, sound = true, radioUp = false;
-  int filter = 0;                       // BLE list: 0 all, 1 near, 2 named, 3 no Apple
-  static const char* const FILT[] = {"all", "near", "named", "no Apple"};
+  int filter = 0;                       // BLE list: 0 all, 1 my tags, 2 near, 3 named, 4 no Apple
+  static const char* const FILT[] = {"all", "my tags", "near", "named", "no Apple"};
   bleNicknamesLoad();
   int volume = 110, sel = 0, top = 0, ch = 1;
   bool scanning = false;
@@ -242,7 +244,7 @@ void appHunt() {
     if (k.up && sel > 0) sel--;
     if (k.down && sel + 1 < (int)view.size()) sel++;
     if (k.lc == 'x') { xSemaphoreTake(s_mux, portMAX_DELAY); s_n = 0; xSemaphoreGive(s_mux); sel = 0; }
-    if (k.lc == 'f' && ble) { filter = (filter + 1) % 4; sel = top = 0; }
+    if (k.lc == 'f' && ble) { filter = (filter + 1) % 5; sel = top = 0; }
     if (k.lc == 'm') sound = !sound;
     if (k.enter && sel < (int)view.size()) {
       Target t = view[sel];
@@ -283,7 +285,7 @@ void appHunt() {
     xSemaphoreGive(s_mux);
     if (ble && filter)
       view.erase(std::remove_if(view.begin(), view.end(), [&](const Target& t) {
-        return filter == 1 ? t.rssi < -60 : filter == 2 ? !(t.flags & 2) : ((t.flags & 1) && !(t.flags & 2));
+        return filter == 1 ? !(t.flags & 4) : filter == 2 ? t.rssi < -60 : filter == 3 ? !(t.flags & 2) : ((t.flags & 1) && !(t.flags & 4));
       }), view.end());
     std::stable_sort(view.begin(), view.end(), [](const Target& a, const Target& b) { return a.rssi > b.rssi; });
     for (int i = 0; i < (int)view.size(); i++) if (ui::mac(view[i].addr) == keep) sel = i;

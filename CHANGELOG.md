@@ -6,7 +6,7 @@
   test, and a list of the devices on the network.
 - **Connect to a BLE device** (`G` in BLE Scan): lists services and characteristics and reads every
   readable value, with optional passkey pairing.
-- BLE Scan and Signal Hunt: filters (near, named, no Apple, connectable) and your own device tags
+- BLE Scan and Signal Hunt: filters (my tags, near, named, no Apple, connectable) and your own device tags
   (`T`); a device you connect to is labelled with the name and model it reports.
 - BLE devices without a broadcast name get better labels: AirPods and Beats models, Swift Pair
   names, Windows and Xbox device types, Fast Pair model codes, services and appearance.
