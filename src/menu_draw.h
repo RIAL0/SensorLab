@@ -1,6 +1,7 @@
 // Main-menu rendering: large vector icons, big titles and full-width descriptions.
 // Depends only on a LovyanGFX-style canvas so it can also be rendered on a PC for previews.
 #pragma once
+#include <math.h>
 #include <stdint.h>
 
 struct MenuItem { const char* name; const char* desc; uint16_t color; uint8_t icon; };
@@ -23,6 +24,7 @@ static const MenuItem MENU_ITEMS[] = {
   {"I2C Scan", "Internal bus + Grove port", 0x07FF, 8},
   {"Keys+Speaker", "Keyboard matrix, tones", 0xFBE0, 10},
   {"Screen", "Panel info + test patterns", 0xAFE5, 12},
+  {"Settings", "Screen, LED, audio, USB drive", 0xBDF7, 16},
 };
 static const int MENU_COUNT = sizeof(MENU_ITEMS) / sizeof(MENU_ITEMS[0]);
 
@@ -145,6 +147,15 @@ void drawMenuIcon(G& g, int id, int x, int y, uint16_t c, uint16_t bg) {
       g.fillRect(x, y + 13, 7, 2, c);
       g.fillRect(x + 21, y + 13, 7, 2, c);
       g.fillRect(x + 13, y + 13, 2, 2, c);
+      break;
+    case 16:  // gear
+      for (int i = 0; i < 8; i++) {
+        float a = i * 0.7854f;
+        int cx = x + 14 + (int)(11.0f * cosf(a)), cy = y + 14 + (int)(11.0f * sinf(a));
+        g.fillCircle(cx, cy, 3, c);
+      }
+      g.fillCircle(x + 14, y + 14, 10, c);
+      g.fillCircle(x + 14, y + 14, 4, bg);
       break;
     default:  // display
       g.fillRoundRect(x + 1, y + 3, 26, 18, 2, c);

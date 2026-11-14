@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "settings.h"
 #include <Preferences.h>
 #include <algorithm>
 
@@ -54,7 +55,36 @@ static Key decode() {
   return k;
 }
 
+// ---- idle handling: dim, then switch the backlight off, after the configured time without a key
+static uint32_t s_lastAct = 0;
+static uint8_t s_idle = 0;                 // 0 awake, 1 dimmed, 2 screen off
+
+void stayAwake() {
+  s_lastAct = millis();
+  if (s_idle) { s_idle = 0; M5Cardputer.Display.setBrightness(cfg.brightness); }
+}
+
+static Key pollRaw();
+
 Key poll() {
+  Key k = pollRaw();
+  uint32_t now = millis();
+  if (k.any) {
+    bool wasOff = s_idle == 2;
+    stayAwake();
+    if (wasOff) return Key();              // the key that wakes a dark screen does nothing else
+    return k;
+  }
+  uint32_t idle = now - s_lastAct, dimMs = cfgDimMs(), offMs = cfgOffMs();
+  if (offMs && idle > offMs) {
+    if (s_idle != 2) { s_idle = 2; M5Cardputer.Display.setBrightness(0); }
+  } else if (dimMs && idle > dimMs) {
+    if (s_idle != 1) { s_idle = 1; M5Cardputer.Display.setBrightness(max(6, cfg.brightness / 6)); }
+  }
+  return k;
+}
+
+static Key pollRaw() {
   M5Cardputer.update();
   Key k;
   if (M5.BtnA.wasPressed()) {

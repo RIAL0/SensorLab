@@ -1,6 +1,7 @@
 // Microphone: live spectrum analyser (bars / spectrogram / oscilloscope) + WAV recorder.
 // ADV audio path: ES8311 codec on I2S (BCK 41, WS 43, DIN 46), shared with the speaker.
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 #include <math.h>
 
@@ -74,7 +75,7 @@ void appMic() {
 
   // Gain is applied in the ES8311 codec's analogue PGA (0..30 dB in 3 dB steps), which keeps the
   // noise floor down compared with multiplying the samples afterwards.
-  int pga = 8;                                        // x3 dB -> +24 dB by default
+  int pga = cfg.micGain;                              // x3 dB; default set in Settings
   auto setPga = [&]() { M5.In_I2C.writeRegister8(0x18, 0x14, 0x10 | pga, 100000); };
   auto micStart = [&]() {
     M5Cardputer.Speaker.end();

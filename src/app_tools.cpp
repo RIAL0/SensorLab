@@ -1,5 +1,6 @@
 // Small tools: I2C bus scanner, keyboard/speaker test, screen test.
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 
 // ------------------------------------------------------------------ I2C scanner
@@ -72,6 +73,7 @@ void appKeys() {
   bool dirty = true;
   while (true) {
     M5Cardputer.update();
+    ui::stayAwake();
     if (M5.BtnA.wasPressed()) break;                 // G0 is the only way out: every key is under test
     if (M5Cardputer.Keyboard.isChange()) {
       dirty = true;
@@ -128,7 +130,7 @@ void appKeys() {
 // ------------------------------------------------------------------ screen
 void appScreen() {
   auto& D = M5Cardputer.Display;
-  int mode = 0, bright = D.getBrightness();
+  int mode = 0, bright = cfg.brightness;
   const int NMODE = 8;
   uint32_t fps = 0, frames = 0, fpsAt = millis();
   float ph = 0;
@@ -138,7 +140,7 @@ void appScreen() {
     if (k.back) break;
     if (k.right || k.enter || k.space) { mode = (mode + 1) % NMODE; dirty = true; }
     if (k.left) { mode = (mode + NMODE - 1) % NMODE; dirty = true; }
-    if (k.up || k.down) { bright = constrain(bright + (k.up ? 16 : -16), 8, 255); D.setBrightness(bright); dirty = true; }
+    if (k.up || k.down) { bright = constrain(bright + (k.up ? 16 : -16), 16, 255); D.setBrightness(bright); cfg.brightness = bright; cfgSave(); dirty = true; }
     if (mode != 7 && !dirty) { delay(15); continue; }
     dirty = false;
     if (mode == 0) {

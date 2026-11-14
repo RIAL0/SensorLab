@@ -1,5 +1,6 @@
 // IR transmitter test (IR LED on GPIO44) and the Stamp RGB LED (GPIO21).
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 
 #define DISABLE_CODE_FOR_RECEIVER
@@ -69,5 +70,5 @@ void appIr() {
     ui::footer("ENTER send P proto ,// ;/. edit L led");
     ui::push();
   }
-  neopixelWrite(21, 0, 0, 0);
+  cfgApplyLed();                 // back to the LED state chosen in Settings
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9
+
+- New **Settings** tool: screen brightness, dim and screen-off when idle, LED on/off with colour and
+  brightness, default mic gain and sound volume.
+- **USB drive mode**: the microSD card appears on a computer as a USB drive.
+- Delete all log files or all recordings in one step; reset settings; About page.
+- Signal Hunt and the Sound Player keep the screen awake while in use.
+
 ## 1.8
 
 - **Join a WiFi network** (`J` in WiFi Scan) with its password: connection details, connectivity

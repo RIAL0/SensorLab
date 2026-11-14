@@ -6,9 +6,9 @@ SensorLab turns the Cardputer ADV into a pocket instrument: it shows what the ra
 the sensors measure, and what the board itself is made of. It is a single firmware image that
 installs from the SD card with [M5Launcher](https://github.com/bmorcelli/Launcher).
 
-![SensorLab main menu](docs/menu-16-tools.png)
+![SensorLab main menu](docs/menu-17-tools.png)
 
-- 16 tools: WiFi, Bluetooth LE, audio, motion, files, battery and board diagnostics
+- 17 tools: WiFi, Bluetooth LE, audio, motion, files, battery, board diagnostics and settings
 - Passive by default: scanning and monitoring only listen. Connecting to a network or a BLE device
   happens only when you ask for it, for equipment you have access to
 - Data you capture is saved to the SD card as CSV, WAV or text
@@ -393,6 +393,42 @@ pixel checks, a pixel grid, and a full-screen animation that measures the real f
 | `,` `/`, `Enter` or `Space` | Next / previous pattern |
 | `;` `.` | Backlight brightness |
 
+### 17. Settings
+
+Preferences that are remembered across restarts, plus housekeeping actions.
+
+| Setting | Choices |
+|---|---|
+| Screen brightness | 6% to 100% |
+| Dim when idle | never, 15 s, 30 s, 1 min, 2 min (default), 5 min |
+| Screen off when idle | never (default), 1, 2, 5, 10 or 30 min |
+| LED | on / off, for the RGB LED on the Stamp module |
+| LED colour | white, red, green, blue, yellow, cyan, magenta, orange |
+| LED brightness | low, medium, high |
+| Mic gain (default) | 0 to +30 dB; the level Mic Spectrum starts with |
+| Sound volume | default volume for the Sound Player and Signal Hunt |
+
+| Action | What it does |
+|---|---|
+| USB drive mode (SD card) | Shows the microSD card to a computer as a USB drive over the USB-C port. Leaving the mode restarts the Cardputer |
+| Delete log files | Removes every numbered `.csv` and `.txt` file SensorLab created in `/SensorLab`, after confirmation |
+| Delete recordings | Removes every `rec_NNNN.wav`, after confirmation |
+| Reset settings | Back to the defaults |
+| About | Version and where data is kept |
+
+| Key | Action |
+|---|---|
+| `;` `.` | Select a row |
+| `,` `/` | Change the value |
+| `Enter` | Change the value, or run the action |
+
+Any key wakes a dimmed screen. When the screen is off, the first key press only wakes it. Signal
+Hunt and the Sound Player keep the screen on while they are tracking or playing. Delete actions
+never touch your notes, `ble_names.csv` or `oui.csv`.
+
+USB drive mode is slow, because the card is connected over SPI: expect it to suit small files, not
+large copies. Eject the drive on the computer before leaving the mode.
+
 ## Files on the SD card
 
 SensorLab keeps everything it writes in `/SensorLab/`, numbered in sequence.
@@ -454,6 +490,7 @@ release, run that workflow from the Actions tab with a version such as `v1.8`, o
 | `src/menu_draw.h` | Menu items, order and icons |
 | `src/ui.h`, `src/ui.cpp` | Shared screen, keyboard, dialog and SD card helpers |
 | `src/app_*.cpp` | One file per tool or group of tools (`app_net.cpp` is the WiFi join feature) |
+| `src/settings.h` | Persistent settings shared by the tools |
 | `preview/preview.cpp` | Renders the main menu on a PC with the same drawing code (needs SDL2) |
 | `release/` | Ready-to-install firmware image |
 | `tools/build_wiki.py` | Builds the [wiki](https://github.com/RIAL0/SensorLab/wiki) pages from this README |

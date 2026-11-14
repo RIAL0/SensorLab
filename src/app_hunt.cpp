@@ -2,6 +2,7 @@
 // around following its signal strength - big meter, trend, history graph and Geiger-style beeps.
 // Receive-only: WiFi is tracked from the target's own beacons, BLE from its advertisements.
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 #include <NimBLEDevice.h>
 #include <WiFi.h>
@@ -119,6 +120,7 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
     if (k.up || k.down) { volume = constrain(volume + (k.up ? 20 : -20), 20, 255); spk.setVolume(volume); }
     if (k.ch == '0') peak = (int)ema;
 
+    ui::stayAwake();                                  // the hunt screen is watched, not typed on
     uint32_t now = millis();
     int hits = s_hits;
     if (hits != lastSeenHits) {                       // a new reading arrived
@@ -204,7 +206,7 @@ void appHunt() {
   int filter = 0;                       // BLE list: 0 all, 1 my tags, 2 near, 3 named, 4 no Apple
   static const char* const FILT[] = {"all", "my tags", "near", "named", "no Apple"};
   bleNicknamesLoad();
-  int volume = 110, sel = 0, top = 0, ch = 1;
+  int volume = max(40, (int)cfg.volume / 2), sel = 0, top = 0, ch = 1;
   bool scanning = false;
   uint32_t lastDraw = 0, retryAt = 0;
   NimBLEScan* scan = nullptr;

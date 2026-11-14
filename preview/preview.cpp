@@ -19,8 +19,8 @@ int main(int argc, char** argv) {
   cv.setColorDepth(16);
   cv.createSprite(240, 135);
   cv.setFont(&fonts::Font0);
-  int tops[] = {0, 3, 6, 9, 12, 13};          // six pages cover all 16 items
-  int sels[] = {0, 4, 7, 10, 12, 15};
+  int tops[] = {0, 3, 6, 9, 12, 14};          // six pages cover all 17 items
+  int sels[] = {0, 4, 7, 10, 13, 16};
   for (int i = 0; i < 6; i++) {
     cv.fillSprite(0);
     cv.fillRect(0, 0, 240, 11, 0x18E3);

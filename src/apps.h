@@ -24,3 +24,4 @@ void wifiJoin(const uint8_t* bssid, const char* ssid, int channel, int authmode)
 void appKeys();
 void appIr();
 void appScreen();
+void appSettings();

@@ -45,7 +45,8 @@ bool confirm(const String& question);
 bool input(const char* title, String& value, int maxLen = 40);
 // Small pop-up list. Returns the chosen index or -1 when cancelled.
 int popup(const char* title, const char* const* items, int count);
-void setRepeatAll(bool on);    // auto-repeat every key (text editing) instead of navigation keys only
+void setRepeatAll(bool on);
+void stayAwake();              // call from screens people watch without pressing keys    // auto-repeat every key (text editing) instead of navigation keys only
 
 // SD card
 bool sdMount();                // mounts on first use, returns false when no card

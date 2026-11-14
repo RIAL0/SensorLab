@@ -1,23 +1,26 @@
 // SensorLab for M5Stack Cardputer ADV - hardware exploration toolkit.
 // Keys everywhere:  ; up   . down   , left   / right   ENTER select   ` or Backspace or G0 = back
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 
 #include "menu_draw.h"
 
 // Same order as MENU_ITEMS in menu_draw.h
 static void (*const RUN[])() = {appWifiScan, appWifiMonitor, appBle, appHunt, appMic, appPlayer, appImu, appSd,
-                                appEditor, appIr, appBattery, appChip, appPins, appI2c, appKeys, appScreen};
+                                appEditor, appIr, appBattery, appChip, appPins, appI2c, appKeys, appScreen, appSettings};
 static const int NITEMS = MENU_COUNT;
 
 void setup() {
-  auto cfg = M5.config();
-  cfg.internal_imu = true;
-  cfg.internal_mic = true;
-  cfg.internal_spk = true;
-  M5Cardputer.begin(cfg, true);
+  auto m5cfg = M5.config();
+  m5cfg.internal_imu = true;
+  m5cfg.internal_mic = true;
+  m5cfg.internal_spk = true;
+  M5Cardputer.begin(m5cfg, true);
   M5Cardputer.Display.setRotation(1);
-  M5Cardputer.Display.setBrightness(140);
+  cfgLoad();
+  M5Cardputer.Display.setBrightness(cfg.brightness);
+  cfgApplyLed();
   ui::begin();
   ui::sdMount();
   analogSetPinAttenuation(10, ADC_11db);

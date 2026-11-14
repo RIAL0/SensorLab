@@ -1,6 +1,7 @@
 // Sound Player: browse the SD card and play WAV files (PCM 8/16-bit, mono/stereo, any rate),
 // including the recordings made by the Mic tool. Audio is streamed from the card in chunks.
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 #include <algorithm>
 
@@ -73,7 +74,7 @@ static void listAudio(const String& path, std::vector<PEnt>& out) {
   std::sort(out.begin(), out.end(), [](const PEnt& a, const PEnt& b) { return a.dir != b.dir ? a.dir : a.name < b.name; });
 }
 
-static int s_volume = 200;
+static int s_volume = 200, s_volCfg = -1;     // follows the Settings default until changed here
 static int s_gainMode = 0;                 // 0 = auto level, 1..4 = x1, x2, x4, x8
 static const char* const GAIN_NAME[] = {"auto", "x1", "x2", "x4", "x8"};
 
@@ -107,6 +108,7 @@ int playerPlay(const String& path, const String& name) {
   int16_t* buf = (int16_t*)malloc(NB * SAMPLES * sizeof(int16_t));
   if (!buf) { f.close(); ui::toast("Out of memory", C_BAD); return -1; }
   auto& spk = M5Cardputer.Speaker;
+  if (s_volCfg != cfg.volume) { s_volCfg = cfg.volume; s_volume = cfg.volume; }
   spk.begin();
   spk.setVolume(s_volume);
   spk.stop(CH);
@@ -164,6 +166,7 @@ int playerPlay(const String& path, const String& name) {
         bi = (bi + 1) % NB;
       }
     }
+    if (!paused) ui::stayAwake();                          // keep the screen on while playing
     if (done && !spk.isPlaying(CH)) { result = 1; break; }
     if (millis() - lastDraw < 100) { delay(2); continue; }
     lastDraw = millis();
