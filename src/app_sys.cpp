@@ -254,6 +254,20 @@ static void pinState(int n, bool& level, bool& oe, bool& ie, bool& pu, bool& pd)
   ie = mux & FUN_IE; pu = mux & FUN_PU; pd = mux & FUN_PD;
 }
 
+String gpioJson() {
+  String out = "[";
+  for (int i = 0; i < NPINS; i++) {
+    const PinInfo& p = PINS[i];
+    bool lv = 0, oe = 0, ie = 0, pu = 0, pd = 0, od = 0;
+    if (p.group != 'N') { pinState(p.gpio, lv, oe, ie, pu, pd); od = oe && pinOpenDrain(p.gpio); }
+    char b[160];
+    snprintf(b, sizeof(b), "%s{\"io\":%d,\"g\":\"%c\",\"use\":\"%s\",\"lv\":%d,\"dir\":\"%s\",\"pull\":\"%s\"}", i ? "," : "", p.gpio, p.group, p.use,
+             (ie || oe) ? (int)lv : -1, p.group == 'N' ? "" : od ? "OD" : oe ? "OUT" : ie ? "IN" : "off", pu ? "up" : pd ? "down" : "");
+    out += b;
+  }
+  return out + "]";
+}
+
 void appPins() {
   int sel = 0, top = 0, filter = 0;
   uint32_t lastDraw = 0;

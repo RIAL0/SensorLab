@@ -50,7 +50,13 @@ void loop() {
   if (k.ch >= '1' && k.ch <= '9') { sel = k.ch - '1'; dirty = true; }
   if (k.ch == '0') { sel = 9; dirty = true; }
   if (k.enter) {
-    RUN[sel]();
+    // WiFi Scan, WiFi Monitor, BLE Scan and Signal Hunt need the radio that web mode is using.
+    bool radio = RUN[sel] == appWifiScan || RUN[sel] == appWifiMonitor || RUN[sel] == appBle || RUN[sel] == appHunt;
+    if (radio && webActive()) {
+      if (ui::confirm("Needs the radio. Stop web mode?")) { webStop(); RUN[sel](); }
+    } else {
+      RUN[sel]();
+    }
     dirty = true;
   }
   if (millis() - lastDraw > 5000) dirty = true;      // refresh battery in the header

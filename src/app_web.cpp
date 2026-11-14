@@ -235,6 +235,35 @@ static void hSettingsSet() {
   s_srv->send(200, "text/plain", "ok");
 }
 
+// The device screen as raw RGB565 (240 x 135, high byte first), straight from the frame buffer.
+static void hScreen() {
+  const size_t len = SCR_W * SCR_H * 2;
+  const uint8_t* buf = (const uint8_t*)cv.getBuffer();
+  s_srv->setContentLength(len);
+  s_srv->sendHeader("Cache-Control", "no-store");
+  s_srv->send(200, "application/octet-stream", "");
+  WiFiClient c = s_srv->client();
+  for (size_t off = 0; off < len && c.connected(); off += 2880) c.write(buf + off, min((size_t)2880, len - off));
+}
+
+// A key pressed in the browser: name=up|down|left|right|enter|back|tab|del, or c=<character>.
+static void hKey() {
+  String n = s_srv->arg("name"), c = s_srv->arg("c");
+  if (n == "up") ui::injectKey(';');
+  else if (n == "down") ui::injectKey('.');
+  else if (n == "left") ui::injectKey(',');
+  else if (n == "right") ui::injectKey('/');
+  else if (n == "enter") ui::injectKey('\n');
+  else if (n == "back") ui::injectKey(27);
+  else if (n == "tab") ui::injectKey('\t');
+  else if (n == "del") ui::injectKey('\b');
+  else if (c.length() == 1 && c[0] >= 32 && c[0] < 127) ui::injectKey(c[0]);
+  else { s_srv->send(400, "text/plain", "unknown key"); return; }
+  s_srv->send(200, "text/plain", "ok");
+}
+
+static void hGpio() { hit("gpio"); s_srv->send(200, "application/json", gpioJson()); }
+
 // Scan for networks while staying an access point. The browser polls until the result is ready.
 static void hScan() {
   hit("wifi scan");
@@ -264,49 +293,79 @@ static String makePassword() {
   return p;
 }
 
-void appWeb() {
-  if (!ui::sdMount()) ui::toast("No SD card: files unavailable", C_WARN, 1400);
+static char s_ssid[24];
+static String s_pass;
+
+bool webActive() { return s_srv != nullptr; }
+
+void webService() {
+  if (s_srv) s_srv->handleClient();
+}
+
+static bool apStart() { return WiFi.softAP(s_ssid, s_pass.c_str(), 6, 0, 2); }
+
+static bool webStart() {
+  if (s_srv) return true;
   Preferences pr;
   pr.begin("slweb", false);
-  String pass = pr.getString("pass", "");
-  if (pass.length() < 8) { pass = makePassword(); pr.putString("pass", pass); }
-
+  s_pass = pr.getString("pass", "");
+  if (s_pass.length() < 8) { s_pass = makePassword(); pr.putString("pass", s_pass); }
+  pr.end();
   uint8_t m[6];
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAPmacAddress(m);
-  char ssid[24];
-  snprintf(ssid, sizeof(ssid), "SensorLab-%02X%02X", m[4], m[5]);
-  auto apStart = [&]() { return WiFi.softAP(ssid, pass.c_str(), 6, 0, 2); };
-  if (!apStart()) { ui::toast("Could not start the access point", C_BAD, 1600); WiFi.mode(WIFI_OFF); return; }
-
-  WebServer srv(80);
-  s_srv = &srv;
+  snprintf(s_ssid, sizeof(s_ssid), "SensorLab-%02X%02X", m[4], m[5]);
+  if (!apStart()) { WiFi.mode(WIFI_OFF); return false; }
+  WebServer* srv = new WebServer(80);
+  s_srv = srv;
   s_reqs = 0; s_lastReq = "";
-  srv.on("/", HTTP_GET, hRoot);
-  srv.on("/api/list", HTTP_GET, hList);
-  srv.on("/api/get", HTTP_GET, hGet);
-  srv.on("/api/save", HTTP_POST, hSave);
-  srv.on("/api/delete", HTTP_POST, hDelete);
-  srv.on("/api/rename", HTTP_POST, hRename);
-  srv.on("/api/mkdir", HTTP_POST, hMkdir);
-  srv.on("/api/upload", HTTP_POST, hUploadDone, hUploadData);
-  srv.on("/api/sys", HTTP_GET, hSys);
-  srv.on("/api/settings", HTTP_GET, hSettingsGet);
-  srv.on("/api/settings", HTTP_POST, hSettingsSet);
-  srv.on("/api/scan", HTTP_GET, hScan);
-  srv.onNotFound([]() { s_srv->send(404, "text/plain", "no such page"); });
-  srv.begin();
+  srv->on("/", HTTP_GET, hRoot);
+  srv->on("/api/list", HTTP_GET, hList);
+  srv->on("/api/get", HTTP_GET, hGet);
+  srv->on("/api/save", HTTP_POST, hSave);
+  srv->on("/api/delete", HTTP_POST, hDelete);
+  srv->on("/api/rename", HTTP_POST, hRename);
+  srv->on("/api/mkdir", HTTP_POST, hMkdir);
+  srv->on("/api/upload", HTTP_POST, hUploadDone, hUploadData);
+  srv->on("/api/sys", HTTP_GET, hSys);
+  srv->on("/api/settings", HTTP_GET, hSettingsGet);
+  srv->on("/api/settings", HTTP_POST, hSettingsSet);
+  srv->on("/api/scan", HTTP_GET, hScan);
+  srv->on("/api/screen", HTTP_GET, hScreen);
+  srv->on("/api/key", HTTP_POST, hKey);
+  srv->on("/api/gpio", HTTP_GET, hGpio);
+  srv->onNotFound([]() { s_srv->send(404, "text/plain", "no such page"); });
+  srv->begin();
+  return true;
+}
 
+void webStop() {
+  if (!s_srv) return;
+  WebServer* srv = s_srv;
+  s_srv = nullptr;                      // first, so nothing serves through a half-stopped server
+  srv->stop();
+  delete srv;
+  if (s_upFile) s_upFile.close();
+  WiFi.scanDelete();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_OFF);
+}
+
+// The web mode screen. ENTER stops web mode; B (or back) leaves it running and returns to the
+// menu, so the other tools can be watched and driven from the browser.
+void appWeb() {
+  if (!ui::sdMount()) ui::toast("No SD card: files unavailable", C_WARN, 1400);
+  if (!webStart()) { ui::toast("Could not start the access point", C_BAD, 1600); return; }
   uint32_t lastDraw = 0;
   while (true) {
-    srv.handleClient();
-    ui::Key k = ui::poll();
-    if (k.back || k.enter) {
-      if (!WiFi.softAPgetStationNum() || ui::confirm("A device is connected. Stop anyway?")) break;
+    ui::Key k = ui::poll();              // also serves the browser
+    if (k.enter) {
+      if (!WiFi.softAPgetStationNum() || ui::confirm("A device is connected. Stop anyway?")) { webStop(); ui::toast("Web mode stopped", C_DIM, 700); return; }
     }
+    if (k.back || k.lc == 'b') { ui::toast("Web mode stays on in the background", C_OK, 1100); return; }
     if (k.lc == 'r' && ui::confirm("Make a new password?")) {
-      pass = makePassword();
-      pr.putString("pass", pass);
+      s_pass = makePassword();
+      Preferences pr; pr.begin("slweb", false); pr.putString("pass", s_pass); pr.end();
       WiFi.softAPdisconnect(false);
       apStart();
     }
@@ -316,25 +375,17 @@ void appWeb() {
     ui::clear();
     ui::header("Web mode", clients ? "CONNECTED" : "WAITING");
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, TOP + 2); cv.print("1. Join this WiFi network:");
-    cv.setTextColor(C_FG, C_BG); cv.setTextSize(2); cv.setCursor(4, TOP + 12); cv.print(ssid); cv.setTextSize(1);
+    cv.setTextColor(C_FG, C_BG); cv.setTextSize(2); cv.setCursor(4, TOP + 12); cv.print(s_ssid); cv.setTextSize(1);
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, TOP + 32); cv.print("Password:");
-    cv.setTextColor(C_YEL, C_BG); cv.setTextSize(2); cv.setCursor(64, TOP + 29); cv.print(pass); cv.setTextSize(1);
+    cv.setTextColor(C_YEL, C_BG); cv.setTextSize(2); cv.setCursor(64, TOP + 29); cv.print(s_pass); cv.setTextSize(1);
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, TOP + 50); cv.print("2. Open in a browser:");
     cv.setTextColor(C_OK, C_BG); cv.setTextSize(2); cv.setCursor(4, TOP + 60); cv.print("192.168.4.1"); cv.setTextSize(1);
     cv.setTextColor(clients ? C_OK : C_DIM, C_BG); cv.setCursor(4, TOP + 82);
     cv.printf("%d device%s connected   %lu requests", clients, clients == 1 ? "" : "s", (unsigned long)s_reqs);
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, TOP + 92);
     if (s_lastReq.length()) cv.printf("last: %.30s", s_lastReq.c_str());
-    else cv.print("Phone: switch off mobile data if it fails.");
-    ui::footer("ENTER stop    R new password");
+    else cv.print("Phone: turn mobile data off if stuck.");
+    ui::footer("ENTER stop  B keep on + menu  R new pw");
     ui::push();
   }
-  srv.stop();
-  s_srv = nullptr;
-  if (s_upFile) s_upFile.close();
-  WiFi.scanDelete();
-  WiFi.softAPdisconnect(true);
-  WiFi.mode(WIFI_OFF);
-  pr.end();
-  ui::toast("Web mode stopped", C_DIM, 700);
 }

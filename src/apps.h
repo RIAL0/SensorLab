@@ -26,3 +26,7 @@ void appIr();
 void appScreen();
 void appSettings();
 void appWeb();                                            // Web mode, started from Settings
+bool webActive();                                         // web mode running (possibly in the background)
+void webService();                                        // serve pending browser requests; called from ui::poll()
+void webStop();
+String gpioJson();                                        // live pin table for the web page (app_sys.cpp)

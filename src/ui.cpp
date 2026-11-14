@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "apps.h"
 #include "settings.h"
 #include <Preferences.h>
 #include <algorithm>
@@ -26,6 +27,26 @@ static size_t s_count = 0;
 static bool s_repeatAll = false;
 
 void setRepeatAll(bool on) { s_repeatAll = on; }
+
+// Navigation flags derived from the character, shared by real and injected keys.
+static void finishKey(Key& k) {
+  k.lc = (k.ch >= 'A' && k.ch <= 'Z') ? k.ch + 32 : k.ch;
+  k.up = (k.ch == ';' || k.ch == ':');
+  k.down = (k.ch == '.' || k.ch == '>');
+  k.left = (k.ch == ',' || k.ch == '<');
+  k.right = (k.ch == '/' || k.ch == '?');
+  k.back = (k.ch == '`' || k.ch == '~' || k.del || k.g0);
+  k.space = k.space || k.ch == ' ';
+  k.any = k.ch || k.enter || k.del || k.tab || k.space || k.g0;
+}
+
+// Keys sent from the browser in web mode.
+static char s_inj[16];
+static uint8_t s_injHead = 0, s_injTail = 0;
+void injectKey(char c) {
+  uint8_t next = (s_injHead + 1) % sizeof(s_inj);
+  if (next != s_injTail) { s_inj[s_injHead] = c; s_injHead = next; }
+}
 
 static Key decode() {
   Key k;
@@ -67,6 +88,7 @@ void stayAwake() {
 static Key pollRaw();
 
 Key poll() {
+  webService();                           // answers browser requests while web mode is running
   Key k = pollRaw();
   uint32_t now = millis();
   if (k.any) {
@@ -87,6 +109,17 @@ Key poll() {
 static Key pollRaw() {
   M5Cardputer.update();
   Key k;
+  if (s_injTail != s_injHead) {
+    char c = s_inj[s_injTail];
+    s_injTail = (s_injTail + 1) % sizeof(s_inj);
+    if (c == '\n') k.enter = true;
+    else if (c == '\b') k.del = true;
+    else if (c == '\t') k.tab = true;
+    else if (c == 27) k.g0 = true;
+    else k.ch = c;
+    finishKey(k);
+    return k;
+  }
   if (M5.BtnA.wasPressed()) {
     k.any = k.back = k.g0 = true;
     return k;
@@ -148,11 +181,11 @@ void header(const char* title, const char* right) {
   cv.setTextColor(C_ACC, C_HDR);
   cv.setCursor(2, 2);
   cv.print(title);
-  char buf[24];
+  char buf[28];
   if (right) {
     snprintf(buf, sizeof(buf), "%s", right);
   } else {
-    snprintf(buf, sizeof(buf), "%s%d%%", s_sdOk ? "SD " : "", battPct());
+    snprintf(buf, sizeof(buf), "%s%s%d%%", webActive() ? "WEB " : "", s_sdOk ? "SD " : "", battPct());
   }
   cv.setTextColor(C_FG, C_HDR);
   cv.setCursor(SCR_W - 2 - (int)strlen(buf) * 6, 2);

@@ -48,12 +48,17 @@ select{background:var(--bg);color:var(--fg);border:1px solid var(--ln);border-ra
 .muted{color:var(--dim);font-size:13px}
 .drop{border:2px dashed var(--ln);border-radius:8px;padding:12px;text-align:center;color:var(--dim);margin-top:10px}
 .drop.over{border-color:var(--ac);color:var(--ac)}
-@media(max-width:560px){.hide-s{display:none}td,th{padding:7px 4px}}
+#cvs{width:min(100%,720px);image-rendering:pixelated;border:1px solid var(--ln);border-radius:6px;background:#000}
+.pad{display:grid;grid-template-columns:repeat(3,minmax(70px,110px));gap:8px;justify-content:center;margin-top:12px}
+.pad .btn{padding:12px 0;font-size:16px}
+.kin{background:var(--bg);color:var(--fg);border:1px solid var(--ln);border-radius:6px;padding:6px 10px;min-width:0;flex:1;max-width:280px}
+.gX td:first-child{color:var(--ok)}.gI td:first-child{color:var(--ac)}.gF td:first-child{color:var(--warn)}.gN,.gS{color:var(--dim)}
+@media(max-width:560px){label.row{grid-template-columns:1fr 64px;gap:4px 10px}label.row>span:first-child{grid-column:1/-1}.hide-s{display:none}td,th{padding:7px 4px}}
 </style>
 </head>
 <body>
 <header><b>SensorLab</b>
-<nav id="nav"><button data-t="files" class="on">Files</button><button data-t="sys">System</button><button data-t="wifi">WiFi scan</button><button data-t="set">Settings</button></nav>
+<nav id="nav"><button data-t="files" class="on">Files</button><button data-t="scr">Screen</button><button data-t="sys">System</button><button data-t="gpio">GPIO</button><button data-t="wifi">WiFi scan</button><button data-t="set">Settings</button></nav>
 <span id="stat"></span></header>
 <main>
 <section id="files">
@@ -63,6 +68,22 @@ select{background:var(--bg);color:var(--fg);border:1px solid var(--ln);border-ra
  <table><thead><tr><th>Name</th><th class="r">Size</th><th class="r">Actions</th></tr></thead><tbody id="list"></tbody></table>
  <div class="drop" id="drop">Drop files here to upload to this folder</div>
  <div id="prog" class="muted"></div>
+</section>
+<section id="scr" hidden>
+ <div class="card" style="text-align:center">
+  <canvas id="cvs" width="240" height="135"></canvas>
+  <div class="pad">
+   <button class="btn" data-k="back">Back</button><button class="btn" data-k="up">&#9650;</button><button class="btn" data-k="enter">Enter</button>
+   <button class="btn" data-k="left">&#9664;</button><button class="btn" data-k="down">&#9660;</button><button class="btn" data-k="right">&#9654;</button>
+  </div>
+  <div class="bar" style="justify-content:center;margin-top:10px"><input id="kin" class="kin" placeholder="type a key or text, then Send" maxlength="24"><button class="btn" id="ksend">Send</button>
+   <button class="btn" data-k="tab">Tab</button><button class="btn" data-k="del">Del</button><button class="btn" id="shot">Save picture</button></div>
+  <p class="muted" id="scrst">Live view of the Cardputer screen. Leave the web mode screen with B on the Cardputer (or Back here) to use the other tools. With a keyboard: arrow keys, Enter and Esc work while this tab is open.</p>
+ </div>
+</section>
+<section id="gpio" hidden>
+ <p class="muted">Live pin states, refreshed every 2 seconds. Green = brought out to a connector, blue = used inside the Cardputer.</p>
+ <table><thead><tr><th class="r">IO</th><th>Function</th><th class="r">Level</th><th>Dir</th><th class="hide-s">Pull</th></tr></thead><tbody id="pins"></tbody></table>
 </section>
 <section id="sys" hidden><div id="sysbody"></div></section>
 <section id="wifi" hidden>
@@ -205,11 +226,48 @@ async function settings(){
   }catch(e){toast(e.message,1)}
 }
 
+/* ---------- screen mirror + remote keys ---------- */
+let scrBusy=false,cur='files';
+async function screen(){
+  if(cur!=='scr'||scrBusy||document.hidden)return;scrBusy=true;
+  try{
+    const b=new Uint8Array(await(await api('/api/screen')).arrayBuffer());
+    if(b.length===64800){
+      const ctx=$('cvs').getContext('2d'),im=ctx.createImageData(240,135),d=im.data;
+      for(let i=0,j=0;i<64800;i+=2,j+=4){const v=(b[i]<<8)|b[i+1];d[j]=(v>>11)*255/31;d[j+1]=((v>>5)&63)*255/63;d[j+2]=(v&31)*255/31;d[j+3]=255}
+      ctx.putImageData(im,0,0);
+    }
+  }catch(e){}
+  scrBusy=false;
+}
+setInterval(screen,350);
+async function key(q){try{await post('/api/key?'+q);setTimeout(screen,120)}catch(e){toast(e.message,1)}}
+document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>key('name='+b.dataset.k));
+$('ksend').onclick=async()=>{for(const ch of $('kin').value)await key('c='+enc(ch));$('kin').value=''};
+$('kin').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('ksend').click()}e.stopPropagation()};
+$('shot').onclick=()=>{const a=document.createElement('a');a.download='sensorlab-screen.png';a.href=$('cvs').toDataURL('image/png');a.click()};
+addEventListener('keydown',e=>{
+  if(cur!=='scr'||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Enter:'enter',Escape:'back',Backspace:'del',Tab:'tab'}[e.key];
+  if(m){e.preventDefault();key('name='+m)}else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){e.preventDefault();key('c='+enc(e.key))}
+});
+
+/* ---------- gpio ---------- */
+async function gpio(){
+  if(cur!=='gpio')return;
+  try{
+    const p=await(await api('/api/gpio')).json();
+    $('pins').innerHTML=p.map(x=>'<tr class="g'+x.g+'"><td class="r">'+x.io+'</td><td>'+esc(x.use)+'</td><td class="r">'+(x.lv<0?'<span class="muted">-</span>':x.lv?'<b style="color:var(--ok)">HIGH</b>':'low')+'</td><td>'+esc(x.dir)+'</td><td class="hide-s">'+esc(x.pull)+'</td></tr>').join('');
+  }catch(e){}
+}
+setInterval(gpio,2000);
+
 /* ---------- tabs ---------- */
 function tab(t){
+  cur=t;
   document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==t);
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  if(t==='files')load();if(t==='sys')sys();if(t==='set')settings();
+  if(t==='files')load();if(t==='sys')sys();if(t==='set')settings();if(t==='scr')screen();if(t==='gpio')gpio();
 }
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 load();sys();setInterval(sys,5000);

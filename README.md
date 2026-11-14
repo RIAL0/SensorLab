@@ -432,13 +432,17 @@ computer and open the address in a browser:
 |---|---|
 | Files | Browse the SD card; download, upload (button or drag and drop), rename and delete; create folders and text files |
 | Editor | Edit text files up to 64 KB in the browser; CSV files can also be shown as a table; WAV files play and images open in the page |
+| Screen | A live view of the Cardputer's screen, with buttons and keyboard keys that act as the Cardputer's keys, and a button to save the picture |
 | System | Firmware version, battery, processor, memory and SD card usage, refreshed every few seconds |
+| GPIO | Every pin with its function, level and direction, refreshed every 2 seconds |
 | WiFi scan | A list of nearby networks with channel, signal and security |
 | Settings | The same settings as on the device |
 
-The password is generated once and kept; press `R` on the web mode screen for a new one. Web mode
-ends when you press `Enter` on the Cardputer. While it runs, the radio is busy being an access
-point, so the other WiFi and Bluetooth tools are not available. On a phone, switch off mobile data
+The password is generated once and kept; press `R` on the web mode screen for a new one. `Enter`
+stops web mode. `B` leaves it running and returns to the menu, so the other tools can be watched
+and controlled from the Screen page; the header then shows `WEB`. The radio is busy being an access
+point, so WiFi Scan, WiFi Monitor, BLE Scan and Signal Hunt ask to stop web mode first. Memory is
+tight while web mode runs, so heavy tools may respond more slowly. On a phone, switch off mobile data
 if the page does not load, because the Cardputer's network has no internet access.
 
 USB drive mode is slow, because the card is connected over SPI: expect it to suit small files, not

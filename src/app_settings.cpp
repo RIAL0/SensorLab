@@ -184,7 +184,9 @@ void appSettings() {
           spk.begin(); spk.setVolume(cfg.volume); spk.tone(880, 60);      // let the new level be heard
           break;
         case R_WEB: if (k.enter) appWeb(); break;
-        case R_USB: if (k.enter) usbDrive(); break;
+        case R_USB:
+          if (k.enter && (!webActive() || ui::confirm("This stops web mode. Continue?"))) { webStop(); usbDrive(); }
+          break;
         case R_DELLOG: if (k.enter) deleteGenerated(false); break;
         case R_DELREC: if (k.enter) deleteGenerated(true); break;
         case R_RESET:
@@ -223,7 +225,8 @@ void appSettings() {
       uint16_t bg = on ? C_SEL : C_BG;
       if (on) cv.fillRect(0, y - 1, SCR_W, LINE_H, bg);
       bool action = i >= R_WEB;
-      cv.setTextColor(on ? C_FG : action ? C_ACC : C_DIM, bg); cv.setCursor(4, y); cv.print(LABEL[i]);
+      bool danger = i == R_DELLOG || i == R_DELREC || i == R_RESET;            // these lose data or settings
+      cv.setTextColor(danger ? (on ? C_BAD : C_WARN) : on ? C_FG : action ? C_ACC : C_DIM, bg); cv.setCursor(4, y); cv.print(LABEL[i]);
       char v[24] = "";
       uint16_t vc = C_YEL;
       switch (i) {
@@ -232,6 +235,7 @@ void appSettings() {
         case R_OFF: snprintf(v, sizeof(v), "%s", OFF_TXT[cfg.offIdx]); break;
         case R_MIC: snprintf(v, sizeof(v), "+%d dB", cfg.micGain * 3); break;
         case R_VOL: snprintf(v, sizeof(v), "%d%%", cfg.volume * 100 / 255); break;
+        case R_WEB: snprintf(v, sizeof(v), "%s", webActive() ? "ON" : "ENTER"); vc = webActive() ? C_OK : C_DIM; break;
         default: snprintf(v, sizeof(v), "ENTER"); vc = C_DIM; break;
       }
       cv.setTextColor(vc, bg); cv.setCursor(SCR_W - 4 - (int)strlen(v) * 6, y); cv.print(v);

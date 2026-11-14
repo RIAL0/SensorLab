@@ -4,7 +4,10 @@
 
 - **Web mode** (in Settings): the Cardputer becomes a password-protected WiFi access point with a
   browser interface for the SD card (browse, download, upload, edit, rename, delete), system
-  information, a WiFi scan and the settings.
+  information, live GPIO states, a WiFi scan and the settings.
+- Web mode can stay on in the background: a Screen page mirrors the display and sends keys, so the
+  Cardputer can be watched and driven from the browser.
+- Settings: the delete and reset rows are shown in orange and red.
 
 ## 1.9
 

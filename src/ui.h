@@ -46,6 +46,7 @@ bool input(const char* title, String& value, int maxLen = 40);
 // Small pop-up list. Returns the chosen index or -1 when cancelled.
 int popup(const char* title, const char* const* items, int count);
 void setRepeatAll(bool on);
+void injectKey(char c);         // queue a key press: a character, or '\n' enter, '\b' backspace, '\t' tab, 27 = G0/back
 void stayAwake();              // call from screens people watch without pressing keys    // auto-repeat every key (text editing) instead of navigation keys only
 
 // SD card
