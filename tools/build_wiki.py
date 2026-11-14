@@ -201,7 +201,7 @@ def main():
     for num, name, body in tools:
         first = re.split(r"(?<=[.!?])\s", " ".join(body.split("\n\n")[0].split()))[0]
         first = first.split(":")[0].rstrip(".") + "."          # keep the table to one short line per tool
-        home += f"| {num} | [{name}]({slug(name)}) | {first} |\n"   # plain links: [[a|b]] would break the table
+        home += f"| {num} | [{name}](https://github.com/{REPO}/wiki/{slug(name)}) | {first} |\n"   # plain links: [[a|b]] would break the table
     home += "\n## Reference\n\n"
     home += "- [[Files on the SD card|Files-on-the-SD-card]]\n- [[Hardware limits|Hardware-limits]]\n"
     home += "- [[Building from source|Building-from-source]]\n- [[Responsible use|Responsible-use]]\n"
