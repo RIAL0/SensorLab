@@ -30,6 +30,7 @@ SHOTS = {
     "GPIO Pins": ["gpio-pins"],
     "I2C Scan": ["i2c-scan"],
     "Keys + Speaker": ["keys"],
+    "Settings": ["settings", "web-files", "web-screen"],
 }
 
 FAQ = """\

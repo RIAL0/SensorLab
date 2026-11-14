@@ -32,8 +32,11 @@ Photos of SensorLab running on a Cardputer ADV.
 | IR Sender | Battery | Chip Info |
 | <img src="docs/screens/gpio-pins.jpg" width="260" alt="GPIO Pins"> | <img src="docs/screens/i2c-scan.jpg" width="260" alt="I2C Scan"> | <img src="docs/screens/keys.jpg" width="260" alt="Keys + Speaker"> |
 | GPIO Pins | I2C Scan | Keys + Speaker |
+| <img src="docs/screens/settings.jpg" width="260" alt="Settings"> | <img src="docs/screens/web-files.jpg" width="260" alt="Web mode: files in the browser"> | <img src="docs/screens/web-screen.jpg" width="260" alt="Web mode: live screen and remote keys"> |
+| Settings | Web mode: files in the browser | Web mode: live screen and remote keys |
 
 Some photos were taken with earlier versions, so small details differ from the current release.
+The two web mode pictures show the browser interface with sample data.
 
 ## Contents
 
