@@ -45,16 +45,24 @@ void cfgSave() {
   s_prefs.putUChar("vol", cfg.volume);
 }
 
-// The M5 library owns the RGB LED and redraws it from its own buffer on every update, so the
-// colour has to be set through M5.Led; writing to the pin directly is overwritten at once.
+// The RGB LED is driven with the Arduino core's WS2812 routine. (The M5 library's own LED driver
+// is an empty stub on this toolchain, so M5.Led does nothing here.) On the ADV the LED has been
+// seen to drop back to dark shortly after being set, so the chosen colour is re-sent a few times
+// a second by ledRefresh(), which ui::poll() calls.
+static uint8_t s_ledNow[3] = {0, 0, 0};
+static uint32_t s_ledAt = 0;
+
 void ledSet(uint8_t r, uint8_t g, uint8_t b) {
-  if (M5.Led.isEnabled()) {
-    M5.Led.setBrightness(255);
-    M5.Led.setAllColor(r, g, b);
-    M5.Led.display();
-  } else {
-    neopixelWrite(21, r, g, b);
-  }
+  s_ledNow[0] = r; s_ledNow[1] = g; s_ledNow[2] = b;
+  neopixelWrite(21, r, g, b);
+  s_ledAt = millis();
+}
+
+void ledRefresh() {
+  if (!(s_ledNow[0] | s_ledNow[1] | s_ledNow[2])) return;      // dark: nothing to keep alive
+  if (millis() - s_ledAt < 150) return;
+  neopixelWrite(21, s_ledNow[0], s_ledNow[1], s_ledNow[2]);
+  s_ledAt = millis();
 }
 
 void cfgApplyLed() {

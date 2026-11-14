@@ -17,6 +17,7 @@ extern Config cfg;
 void cfgLoad();
 void cfgSave();
 void cfgApplyLed();           // sets the LED to the configured state
-void ledSet(uint8_t r, uint8_t g, uint8_t b);   // drive the LED directly (through the M5 library)
+void ledSet(uint8_t r, uint8_t g, uint8_t b);   // set the LED colour
+void ledRefresh();            // re-sends the colour; called from ui::poll()
 uint32_t cfgDimMs();          // 0 = never
 uint32_t cfgOffMs();          // 0 = never
