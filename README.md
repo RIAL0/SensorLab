@@ -14,8 +14,30 @@ installs from the SD card with [M5Launcher](https://github.com/bmorcelli/Launche
 - Data you capture is saved to the SD card as CSV, WAV or text
 - No account, no internet connection, no configuration
 
+## Screenshots
+
+Photos of SensorLab running on a Cardputer ADV.
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="docs/screens/wifi-scan.jpg" width="260" alt="WiFi Scan (network names blurred)"> | <img src="docs/screens/wifi-channels.jpg" width="260" alt="WiFi channel occupancy"> | <img src="docs/screens/wifi-monitor.jpg" width="260" alt="WiFi Monitor"> |
+| WiFi Scan (network names blurred) | WiFi channel occupancy | WiFi Monitor |
+| <img src="docs/screens/ble-scan.jpg" width="260" alt="BLE Scan"> | <img src="docs/screens/signal-hunt.jpg" width="260" alt="Signal Hunt"> | <img src="docs/screens/mic-spectrum.jpg" width="260" alt="Mic Spectrum"> |
+| BLE Scan | Signal Hunt | Mic Spectrum |
+| <img src="docs/screens/mic-spectrogram.jpg" width="260" alt="Spectrogram"> | <img src="docs/screens/sound-player.jpg" width="260" alt="Sound Player"> | <img src="docs/screens/imu-attitude.jpg" width="260" alt="IMU attitude"> |
+| Spectrogram | Sound Player | IMU attitude |
+| <img src="docs/screens/imu-bars.jpg" width="260" alt="IMU bars"> | <img src="docs/screens/file-manager.jpg" width="260" alt="File Manager"> | <img src="docs/screens/text-editor.jpg" width="260" alt="Text Editor"> |
+| IMU bars | File Manager | Text Editor |
+| <img src="docs/screens/ir-led.jpg" width="260" alt="IR + LED"> | <img src="docs/screens/battery-charging.jpg" width="260" alt="Battery"> | <img src="docs/screens/chip-info.jpg" width="260" alt="Chip Info"> |
+| IR + LED | Battery | Chip Info |
+| <img src="docs/screens/gpio-pins.jpg" width="260" alt="GPIO Pins"> | <img src="docs/screens/i2c-scan.jpg" width="260" alt="I2C Scan"> | <img src="docs/screens/keys.jpg" width="260" alt="Keys + Speaker"> |
+| GPIO Pins | I2C Scan | Keys + Speaker |
+
+Some photos were taken with earlier versions, so small details differ from the current release.
+
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Hardware](#hardware)
 - [Install](#install)
 - [Controls](#controls)

@@ -19,9 +19,9 @@ int main(int argc, char** argv) {
   cv.setColorDepth(16);
   cv.createSprite(240, 135);
   cv.setFont(&fonts::Font0);
-  int tops[] = {0, 2, 6, 9, 13};
-  int sels[] = {0, 3, 7, 10, 15};
-  for (int i = 0; i < 5; i++) {
+  int tops[] = {0, 3, 6, 9, 12, 13};          // six pages cover all 16 items
+  int sels[] = {0, 4, 7, 10, 12, 15};
+  for (int i = 0; i < 6; i++) {
     cv.fillSprite(0);
     cv.fillRect(0, 0, 240, 11, 0x18E3);
     cv.setTextSize(1); cv.setTextColor(0x05FF); cv.setCursor(2, 2); cv.print("SensorLab");
