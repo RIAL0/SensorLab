@@ -1,0 +1,41 @@
+name: Publish wiki
+
+# Rebuilds the wiki from README.md whenever the README or the generator changes.
+# One-time setup: the wiki must be enabled (Settings > Features > Wikis) and have a first page
+# created in the browser, because GitHub only creates the wiki's storage at that moment.
+on:
+  push:
+    branches: [main]
+    paths: ['README.md', 'tools/build_wiki.py', '.github/workflows/wiki.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build pages
+        run: python3 tools/build_wiki.py wiki-out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          WIKI="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if ! git clone --depth 1 "$WIKI" wiki-repo 2>/dev/null; then
+            echo "::error::The wiki does not exist yet. Enable Wikis in the repository settings, create a first page in the browser (any content), then run this workflow again."
+            exit 1
+          fi
+          find wiki-repo -maxdepth 1 -name '*.md' -delete
+          cp wiki-out/*.md wiki-repo/
+          cd wiki-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Wiki already up to date."; exit 0; fi
+          git commit -q -m "Update wiki from ${GITHUB_SHA::7}"
+          git push

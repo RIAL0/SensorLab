@@ -456,6 +456,7 @@ release, run that workflow from the Actions tab with a version such as `v1.8`, o
 | `src/app_*.cpp` | One file per tool or group of tools (`app_net.cpp` is the WiFi join feature) |
 | `preview/preview.cpp` | Renders the main menu on a PC with the same drawing code (needs SDL2) |
 | `release/` | Ready-to-install firmware image |
+| `tools/build_wiki.py` | Builds the [wiki](https://github.com/RIAL0/SensorLab/wiki) pages from this README |
 
 To add a tool: write `void appMyTool()` in a new `src/app_*.cpp`, declare it in `src/apps.h`, add a
 row to `MENU_ITEMS` in `src/menu_draw.h` and the function to `RUN` in `src/main.cpp` at the same
@@ -489,4 +490,4 @@ It builds on these open-source projects:
 
 SensorLab is an independent project and is not affiliated with or endorsed by M5Stack.
 
-See the [changelog](CHANGELOG.md) for the release history.
+See the [changelog](CHANGELOG.md) for the release history, and the [wiki](https://github.com/RIAL0/SensorLab/wiki) for one page per tool and an FAQ.
