@@ -46,24 +46,30 @@ void cfgSave() {
 }
 
 // The RGB LED is driven with the Arduino core's WS2812 routine. (The M5 library's own LED driver
-// is an empty stub on this toolchain, so M5.Led does nothing here.) On the ADV the LED has been
-// seen to drop back to dark shortly after being set, so the chosen colour is re-sent a few times
-// a second by ledRefresh(), which ui::poll() calls.
-static uint8_t s_ledNow[3] = {0, 0, 0};
-static uint32_t s_ledAt = 0;
+// is an empty stub on this toolchain, so M5.Led does nothing here.) On the ADV something makes the
+// LED drop back to dark a moment after it is set; the cause is not identified. As a workaround a
+// small background task re-sends the colour 100 times a second, which is too fast to see as
+// flashing and independent of what the foreground tool is doing.
+static volatile uint8_t s_ledNow[3] = {0, 0, 0};
+static volatile uint8_t s_ledOffWrites = 0;        // a few "dark" frames after switching off
+static TaskHandle_t s_ledTask = nullptr;
+
+static void ledTask(void*) {
+  for (;;) {
+    uint8_t r = s_ledNow[0], g = s_ledNow[1], b = s_ledNow[2];
+    if (r | g | b) neopixelWrite(21, r, g, b);
+    else if (s_ledOffWrites) { neopixelWrite(21, 0, 0, 0); s_ledOffWrites = s_ledOffWrites - 1; }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
 
 void ledSet(uint8_t r, uint8_t g, uint8_t b) {
   s_ledNow[0] = r; s_ledNow[1] = g; s_ledNow[2] = b;
-  neopixelWrite(21, r, g, b);
-  s_ledAt = millis();
+  if (!(r | g | b)) s_ledOffWrites = 3;
+  if (!s_ledTask) xTaskCreatePinnedToCore(ledTask, "led", 3072, nullptr, 1, &s_ledTask, 1);
 }
 
-void ledRefresh() {
-  if (!(s_ledNow[0] | s_ledNow[1] | s_ledNow[2])) return;      // dark: nothing to keep alive
-  if (millis() - s_ledAt < 150) return;
-  neopixelWrite(21, s_ledNow[0], s_ledNow[1], s_ledNow[2]);
-  s_ledAt = millis();
-}
+void ledRefresh() {}        // kept for callers; the background task does the work
 
 void cfgApplyLed() {
   if (!cfg.ledOn) { ledSet(0, 0, 0); return; }
