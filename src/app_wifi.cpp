@@ -183,6 +183,11 @@ void appWifiScan() {
     if (k.lc == 'x') { aps.clear(); sel = top = 0; }
     if (k.lc == 'r' && !scanning && !autoScan) { ch = 1; startScan(); }
     if (k.enter && sel < (int)aps.size()) apDetail(aps[sel].r);
+    if (k.lc == 'j' && sel < (int)aps.size()) {
+      wifi_ap_record_t r = aps[sel].r;
+      wifiJoin(r.bssid, (const char*)r.ssid, r.primary, r.authmode);
+      scanning = false; retryAt = millis() + 300;        // back to scanning
+    }
     if (k.lc == 's' && !aps.empty()) {
       if (!ui::sdMount()) ui::toast("No SD card", C_BAD);
       else {
@@ -265,7 +270,7 @@ void appWifiScan() {
         cv.setCursor(40, 68); cv.printf("sweeps %d  failed scans %d", sweeps, fails);
         if (sweeps >= 2) { cv.setCursor(40, 82); cv.print("Try P for passive scan"); }
       }
-      ui::footer("ENTER detail C chan S save P pasv X clr");
+      ui::footer("ENTER detail  J join  C chan  S save");
     } else {
       // networks per channel + strongest signal on each
       int cnt[15] = {0}, best[15];

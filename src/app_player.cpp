@@ -73,7 +73,28 @@ static void listAudio(const String& path, std::vector<PEnt>& out) {
   std::sort(out.begin(), out.end(), [](const PEnt& a, const PEnt& b) { return a.dir != b.dir ? a.dir : a.name < b.name; });
 }
 
-static int s_volume = 120;
+static int s_volume = 200;
+static int s_gainMode = 0;                 // 0 = auto level, 1..4 = x1, x2, x4, x8
+static const char* const GAIN_NAME[] = {"auto", "x1", "x2", "x4", "x8"};
+
+// Loudest sample in the file, so quiet recordings can be brought up to full level.
+// Reads at most the first 4 MB; returns 0 when it cannot tell.
+static int scanPeak(File& f, const WavInfo& w) {
+  static uint8_t tmp[2048];
+  uint32_t left = min(w.dataBytes, (uint32_t)(4 * 1024 * 1024));
+  int peak = 0;
+  uint32_t last = 0;
+  f.seek(w.dataStart);
+  while (left) {
+    int n = f.read(tmp, min(left, (uint32_t)sizeof(tmp)));
+    if (n <= 0) break;
+    left -= n;
+    if (w.bits == 16) { int16_t* s = (int16_t*)tmp; for (int i = 0; i < n / 2; i += 2) { int a = abs(s[i]); if (a > peak) peak = a; } }
+    else for (int i = 0; i < n; i += 2) { int a = abs(((int)tmp[i] - 128) << 8); if (a > peak) peak = a; }
+    if (millis() - last > 200) { last = millis(); M5Cardputer.update(); }
+  }
+  return peak;
+}
 
 // Plays one file. Returns +1 when it reached the end, 0 when the user stopped it, -1 on error.
 int playerPlay(const String& path, const String& name) {
@@ -89,6 +110,11 @@ int playerPlay(const String& path, const String& name) {
   spk.begin();
   spk.setVolume(s_volume);
   spk.stop(CH);
+  ui::toast("Checking level...", C_DIM, 1);
+  int filePeak = scanPeak(f, w);
+  // auto: bring the loudest sample to about 90% of full scale, at most x16
+  float autoGain = filePeak > 0 ? constrain(29500.0f / filePeak, 1.0f, 16.0f) : 1.0f;
+  auto gainNow = [&]() { return s_gainMode == 0 ? autoGain : (float)(1 << (s_gainMode - 1)); };
   f.seek(w.dataStart);
 
   const uint32_t bytesPerSec = w.rate * w.blockAlign;
@@ -103,6 +129,7 @@ int playerPlay(const String& path, const String& name) {
     if (k.back) break;
     if (k.space || k.enter) paused = !paused;
     if (k.up || k.down) { s_volume = constrain(s_volume + (k.up ? 15 : -15), 0, 255); spk.setVolume(s_volume); }
+    if (k.lc == 'g') s_gainMode = (s_gainMode + 1) % 5;
     if (k.left || k.right) {                                // seek 5 s
       int64_t np = (int64_t)pos + (k.right ? 5 : -5) * (int64_t)bytesPerSec;
       if (np < 0) np = 0;
@@ -126,6 +153,8 @@ int playerPlay(const String& path, const String& name) {
           uint8_t* u = (uint8_t*)b;
           for (int i = n - 1; i >= 0; i--) b[i] = ((int16_t)u[i] - 128) << 8;
         }
+        float g = gainNow();
+        if (g > 1.01f) for (int i = 0; i < n; i++) b[i] = (int16_t)constrain((int)(b[i] * g), -32768, 32767);
         peak = 0;
         for (int i = 0; i < n; i += 8) { int a = abs(b[i]); if (a > peak) peak = a; }
         int step = max(1, n / 120);
@@ -166,7 +195,9 @@ int playerPlay(const String& path, const String& name) {
     if (w.dataBytes) cv.fillRect(6, by + 2, (int)((uint64_t)pos * (SCR_W - 12) / w.dataBytes), 5, C_ACC);
     cv.setTextColor(C_FG, C_BG); cv.setCursor(4, by + 12);
     cv.printf("%02lu:%02lu / %02lu:%02lu", (unsigned long)(cur / 60), (unsigned long)(cur % 60), (unsigned long)(tot / 60), (unsigned long)(tot % 60));
-    ui::footer("SPACE pause ,// seek ;/. vol ` stop");
+    cv.setTextColor(C_ACC, C_BG); cv.setCursor(130, by + 12);
+    cv.printf("gain %s (x%.1f)", GAIN_NAME[s_gainMode], gainNow());
+    ui::footer("SPACE pause ,// seek ;/. vol G gain");
     ui::push();
   }
   spk.stop(CH);
@@ -199,8 +230,8 @@ void appPlayer() {
       if (path == "/") { if (k.back) return; }
       else { int sl = path.lastIndexOf('/'); path = sl <= 0 ? "/" : path.substring(0, sl); listAudio(path, ents); sel = top = 0; }
     }
-    if (k.up && sel > 0) sel--;
-    if (k.down && sel + 1 < (int)ents.size()) sel++;
+    if (k.up && !ents.empty()) sel = (sel + ents.size() - 1) % ents.size();        // wraps top <-> bottom
+    if (k.down && !ents.empty()) sel = (sel + 1) % ents.size();
     if (k.lc == 'a') autoNext = !autoNext;
     if (k.lc == 'd' && sel < (int)ents.size() && !ents[sel].dir && ui::confirm("Delete " + ents[sel].name + " ?")) {
       SD.remove(full(ents[sel].name));

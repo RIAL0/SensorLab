@@ -437,8 +437,8 @@ static String browse(bool pick, const char* pickTitle) {
     bool has = sel < (int)ents.size();
     if (k.back) { if (!goUp()) return ""; continue; }
     if (k.left) { goUp(); continue; }
-    if (k.up && sel > 0) sel--;
-    if (k.down && sel + 1 < (int)ents.size()) sel++;
+    if (k.up && !ents.empty()) sel = (sel + ents.size() - 1) % ents.size();        // wraps: up from the top goes to the bottom
+    if (k.down && !ents.empty()) sel = (sel + 1) % ents.size();
 
     // ---- which action?
     enum { A_NONE, A_OPEN, A_INFO, A_COPY, A_CUT, A_PASTE, A_RENAME, A_NEWDIR, A_NEWTXT, A_DELETE, A_HEX, A_CARD };

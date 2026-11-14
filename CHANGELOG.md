@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.8
+
+- **Join a WiFi network** (`J` in WiFi Scan) with its password: connection details, connectivity
+  test, and a list of the devices on the network.
+- **Connect to a BLE device** (`G` in BLE Scan): lists services and characteristics and reads every
+  readable value, with optional passkey pairing.
+- BLE devices without a broadcast name get better labels: AirPods and Beats models, Swift Pair
+  names, Windows and Xbox device types, Fast Pair model codes, services and appearance.
+- Sound Player: automatic level for quiet recordings, manual gain (`G`), higher default volume.
+- Mic Spectrum: default gain raised to +24 dB.
+- File Manager and Sound Player lists wrap around from top to bottom.
+- Signal Hunt: scale labels stay visible; long names no longer run into the next column.
+- File Manager action menu shows all entries at once.
+
 ## 1.7 - first public release
 
 The first public release, with 16 tools: WiFi Scan, WiFi Monitor, BLE Scan, Signal Hunt, Mic Spectrum,

@@ -9,7 +9,8 @@ installs from the SD card with [M5Launcher](https://github.com/bmorcelli/Launche
 ![SensorLab main menu](docs/menu.png)
 
 - 16 tools: WiFi, Bluetooth LE, audio, motion, files, battery and board diagnostics
-- Everything is receive-only: SensorLab never connects to, joins or attacks a network or device
+- Passive by default: scanning and monitoring only listen. Connecting to a network or a BLE device
+  happens only when you ask for it, for equipment you have access to
 - Data you capture is saved to the SD card as CSV, WAV or text
 - No account, no internet connection, no configuration
 
@@ -99,6 +100,20 @@ on each channel and names the least used one.
 | `R` | Rescan now, when auto-rescan is off |
 | `X` | Clear the list |
 | `S` | Save the list as CSV |
+| `J` | Join the selected network (see below) |
+
+**Join a network (`J`).** For a network you have the password for, SensorLab connects and shows what
+is visible from the inside. Open networks join without a password; hidden networks ask for the
+name. The password is kept in memory until power-off and is never written to the card.
+
+| Option | Shows |
+|---|---|
+| Connection details | Access point, channel, signal, security, your IP, subnet mask and prefix, network and broadcast addresses, router, DNS servers, MAC, hostname, router radio vendor |
+| Connectivity test | Ping to the router, ping to `1.1.1.1`, a DNS lookup of `example.com`, and a verdict on internet access |
+| Find devices on this network | Every device that answers an address request: IP, MAC and vendor, with the router and the Cardputer marked. Networks larger than 254 addresses are limited to your own /24 |
+| Disconnect | Leaves the network and returns to scanning |
+
+WPA2-Enterprise (username and password) networks are not supported.
 
 ### 2. WiFi Monitor
 
@@ -125,6 +140,13 @@ advertising type, flags, appearance, observed advertising interval, manufacturer
 (with Apple and Microsoft subtypes and iBeacon decoding), advertised services, service data and the
 raw bytes. In the list, **C** marks connectable devices and **P** / **R** a public or random address.
 
+**Why many devices have no name.** A phone's Bluetooth list gets most names from Bluetooth Classic,
+from devices it has paired with, or by connecting. A BLE scanner only sees what is broadcast, and
+many devices (all Apple devices, for privacy) broadcast no name. SensorLab shows the name when
+there is one; otherwise it builds the best label it can from the broadcast: the AirPods or Beats
+model, a Swift Pair name, the Windows or Xbox device type, a Fast Pair model code, the advertised
+service or appearance, or the manufacturer.
+
 | Key | Action |
 |---|---|
 | `;` `.` | Move through the list |
@@ -134,6 +156,14 @@ raw bytes. In the list, **C** marks connectable devices and **P** / **R** a publ
 | `A` | Active / passive scan |
 | `X` | Clear the list |
 | `S` | Save the list as CSV |
+| `G` | Connect to the selected device and read it (see below) |
+
+**Connect and read (`G`).** SensorLab connects to the selected device, lists its services and
+characteristics, reads every value the device allows (name, model, serial, firmware and hardware
+revision, manufacturer, battery level and anything else readable), then disconnects. Choose
+"Pair with passkey" for devices that protect their values behind a fixed 6-digit code. Devices that
+show a new random code on their own screen while pairing are not supported, and Apple devices
+generally refuse.
 
 ### 4. Signal Hunt
 
@@ -167,7 +197,7 @@ dBFS and a clipping warning, and records 16 kHz mono 16-bit WAV files.
 | Key | Action |
 |---|---|
 | `,` `/` or `V` | Next / previous view |
-| `;` `.` | Microphone gain up / down (0 to +30 dB, in the codec) |
+| `;` `.` | Microphone gain up / down (0 to +30 dB in the codec, +24 dB by default) |
 | `Enter` or `R` | Start / stop recording to the SD card |
 | `H` | Freeze / resume the display |
 
@@ -186,7 +216,11 @@ It opens in `/SensorLab`, where Mic Spectrum saves its recordings.
 | Playing | `Space` or `Enter` | Pause / resume |
 | Playing | `,` `/` | Seek 5 seconds back / forward |
 | Playing | `;` `.` | Volume up / down |
+| Playing | `G` | Gain: auto, x1, x2, x4, x8 |
 | Playing | `` ` `` | Stop |
+
+Gain is automatic by default: the file is checked first and quiet recordings are raised to full
+level, up to 16 times.
 
 ### 7. IMU Motion
 
@@ -208,7 +242,7 @@ is shown as a hex dump.
 
 | Key | Action |
 |---|---|
-| `;` `.` | Move through the list |
+| `;` `.` | Move through the list; it wraps, so up from the first item jumps to the last |
 | `Enter` | Open the file or folder |
 | `,` or `` ` `` | Up one folder |
 | `Tab` or `M` | Action menu with everything below |
@@ -338,7 +372,7 @@ SensorLab keeps everything it writes in `/SensorLab/`, numbered in sequence.
 | `imu_NNNN.csv` | IMU Motion log |
 | `batt_NNNN.csv` | Battery log |
 | `note_NNNN.txt` | Text Editor new notes |
-| `chip_`, `pins_`, `i2c_`, `sdcard_`, `wifi_ap_`, `wifi_dev_`, `ble_dev_NNNN.txt` | Saved reports and detail pages |
+| `chip_`, `pins_`, `i2c_`, `sdcard_`, `wifi_ap_`, `wifi_dev_`, `ble_dev_`, `ble_gatt_`, `netinfo_`, `netdevices_NNNN.txt` | Saved reports and detail pages |
 
 **Vendor names:** a small table of network-card vendors is built in. For full coverage, add
 `/SensorLab/oui.csv` with one `AABBCC,Vendor name` line per vendor prefix.
@@ -384,7 +418,7 @@ release, run that workflow from the Actions tab with a version such as `v1.8`, o
 | `src/main.cpp` | Start-up and the main menu loop |
 | `src/menu_draw.h` | Menu items, order and icons |
 | `src/ui.h`, `src/ui.cpp` | Shared screen, keyboard, dialog and SD card helpers |
-| `src/app_*.cpp` | One file per tool or group of tools |
+| `src/app_*.cpp` | One file per tool or group of tools (`app_net.cpp` is the WiFi join feature) |
 | `preview/preview.cpp` | Renders the main menu on a PC with the same drawing code (needs SDL2) |
 | `release/` | Ready-to-install firmware image |
 
@@ -394,13 +428,17 @@ position.
 
 ## Responsible use
 
-SensorLab only listens. It does not connect to networks or devices, capture credentials, or
-transmit anything beyond the ordinary probe and scan requests every phone sends when it lists
-nearby networks and devices.
+Scanning, monitoring and Signal Hunt only listen. They transmit nothing beyond the ordinary probe
+and scan requests every phone sends when it lists nearby networks and devices, and SensorLab has no
+tools to capture credentials, break passwords or disrupt a network.
 
-Even so, radio monitoring is regulated differently from country to country, and the names and
-addresses of nearby devices can be personal data. Use SensorLab on your own equipment or where you
-have permission, and follow the law where you are.
+Two actions do connect, and only when you start them: joining a WiFi network with its password
+(`J` in WiFi Scan) and connecting to a BLE device to read it (`G` in BLE Scan). Use them on networks
+and devices that are yours or that you have permission to examine. Listing the devices on a network
+you do not administer, or connecting to someone else's device, may be unlawful where you are.
+
+Radio monitoring is regulated differently from country to country, and the names and addresses of
+nearby devices can be personal data. Follow the law where you are.
 
 ## Credits and licence
 

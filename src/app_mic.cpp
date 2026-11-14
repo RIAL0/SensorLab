@@ -74,7 +74,7 @@ void appMic() {
 
   // Gain is applied in the ES8311 codec's analogue PGA (0..30 dB in 3 dB steps), which keeps the
   // noise floor down compared with multiplying the samples afterwards.
-  int pga = 6;                                        // x3 dB -> +18 dB by default
+  int pga = 8;                                        // x3 dB -> +24 dB by default
   auto setPga = [&]() { M5.In_I2C.writeRegister8(0x18, 0x14, 0x10 | pga, 100000); };
   auto micStart = [&]() {
     M5Cardputer.Speaker.end();

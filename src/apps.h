@@ -19,6 +19,8 @@ int playerPlay(const String& path, const String& name);  // +1 finished, 0 stopp
 void editorOpen(const String& path);                     // edit an existing text file
 String filesPick(const char* title);                     // file chooser; "" when cancelled
 bool filesIsText(const String& name);
+// Join a WiFi network the user has the password for and inspect it from the inside (app_net.cpp)
+void wifiJoin(const uint8_t* bssid, const char* ssid, int channel, int authmode);
 void appKeys();
 void appIr();
 void appScreen();

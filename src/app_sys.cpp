@@ -367,7 +367,7 @@ void appChip() {
     esp_chip_info(&ci);
     L.push_back("#Board");
     L.push_back(String("Detected\t") + boardName());
-    L.push_back("Firmware\tSensorLab 1.7  " __DATE__);
+    L.push_back("Firmware\tSensorLab 1.8  " __DATE__);
     snprintf(b, sizeof(b), "Uptime\t%lu s", (unsigned long)(millis() / 1000)); L.push_back(b);
     L.push_back(String("Last reset\t") + resetName(esp_reset_reason()));
     L.push_back("#CPU");

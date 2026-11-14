@@ -202,7 +202,7 @@ bool input(const char* title, String& value, int maxLen) {
 int popup(const char* title, const char* const* items, int count) {
   int sel = 0;
   bool dirty = true;
-  const int rows = min(count, 10), w = 150, h = rows * LINE_H + 18, x = (SCR_W - w) / 2, y = (SCR_H - h) / 2;
+  const int rows = min(count, 11), w = 150, h = rows * LINE_H + 18, x = (SCR_W - w) / 2, y = (SCR_H - h) / 2;
   int top = 0;
   while (true) {
     Key k = poll();

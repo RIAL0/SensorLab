@@ -9,7 +9,8 @@
 #include <esp_wifi.h>
 
 void wifiQuietSta();                                                       // app_wifi.cpp
-String bleDescribe(const char* name, const uint8_t* mfg, uint8_t mfgLen);  // app_ble.cpp
+String bleDescribe(const char* name, const uint8_t* mfg, uint8_t mfgLen, const char* svcList,
+                   const char* svcDataUuid, const uint8_t* svcData, uint8_t svcDataLen, int appearance);  // app_ble.cpp
 
 struct Target {
   char name[33];
@@ -54,7 +55,12 @@ class HuntCb : public NimBLEAdvertisedDeviceCallbacks {
     }
     String label;
     std::string mfg = a->haveManufacturerData() ? a->getManufacturerData() : std::string();
-    label = bleDescribe(a->haveName() ? a->getName().c_str() : "", (const uint8_t*)mfg.data(), mfg.size());
+    String svcs;
+    for (int i = 0; i < a->getServiceUUIDCount() && svcs.length() < 60; i++) { svcs += a->getServiceUUID(i).toString().c_str(); svcs += ' '; }
+    std::string sd = a->haveServiceData() ? a->getServiceData(0) : std::string();
+    std::string sdu = a->haveServiceData() ? a->getServiceDataUUID(0).toString() : std::string();
+    label = bleDescribe(a->haveName() ? a->getName().c_str() : "", (const uint8_t*)mfg.data(), mfg.size(), svcs.c_str(),
+                        sdu.c_str(), (const uint8_t*)sd.data(), sd.size(), a->haveAppearance() ? a->getAppearance() : -1);
     xSemaphoreTake(s_mux, portMAX_DELAY);
     if (s_list) {
       Target* t = nullptr;
@@ -161,17 +167,17 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
     // history, newest on the right
     const int gy = TOP + 49, gh = 52;
     cv.drawRect(bx, gy, bw, gh, C_SEL);
-    for (int d = -80; d <= -40; d += 20) {
-      int y = gy + gh - 2 - (d + 100) * (gh - 3) / 70;
-      for (int x = bx + 2; x < bx + bw - 2; x += 4) cv.drawPixel(x, y, C_SEL);
-      cv.setTextColor(C_SEL); cv.setCursor(bx + 3, y - 8); cv.print(d);
-    }
     for (int i = 0; i < HIST; i++) {
       if (hist[i] <= -100) continue;
       int h = (hist[i] + 100) * (gh - 3) / 70;
       if (h < 1) h = 1;
       if (h > gh - 2) h = gh - 2;
       cv.drawFastVLine(bx + 1 + i, gy + gh - 1 - h, h, sigColor(hist[i]));
+    }
+    for (int d = -80; d <= -40; d += 20) {            // scale drawn last so the bars cannot hide it
+      int y = gy + gh - 2 - (d + 100) * (gh - 3) / 70;
+      for (int x = bx + 2; x < bx + bw - 2; x += 4) cv.drawPixel(x, y, C_BG);
+      cv.setTextColor(C_FG, C_BG); cv.setCursor(bx + 2, y - 4); cv.print(d);
     }
     ui::footer(sound ? "M mute  ;/. vol  0 reset peak  ` list" : "MUTED  M sound on  0 reset  ` list");
     ui::push();
@@ -282,7 +288,7 @@ void appHunt() {
       uint16_t bg = on ? C_SEL : C_BG;
       if (on) cv.fillRect(0, y - 1, SCR_W, LINE_H, bg);
       char nm[28];
-      if (t.name[0]) snprintf(nm, sizeof(nm), "%-24.24s", t.name);
+      if (t.name[0]) snprintf(nm, sizeof(nm), "%-23.23s", t.name);
       else if (ble) { char a[20]; snprintf(a, sizeof(a), "%02X:%02X:%02X:%02X:%02X:%02X", t.addr[5], t.addr[4], t.addr[3], t.addr[2], t.addr[1], t.addr[0]); snprintf(nm, sizeof(nm), "%s", a); }
       else snprintf(nm, sizeof(nm), "<hidden> %02X:%02X:%02X", t.addr[3], t.addr[4], t.addr[5]);
       cv.setTextColor(stale ? C_DIM : t.name[0] ? C_FG : C_DIM, bg); cv.setCursor(2, y); cv.print(nm);
