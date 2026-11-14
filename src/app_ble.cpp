@@ -125,6 +125,56 @@ static String addrStr(const BleDev& d) {
 }
 String wifiVendor(const uint8_t* m);   // shared OUI lookup (app_wifi.cpp)
 
+// ---- nicknames. A device gets one when the user tags it (T) or when a connection reveals its
+// name and model. Devices with a fixed address are remembered in /SensorLab/ble_names.csv;
+// devices with a rotating address keep theirs only until the address changes.
+struct Nick { uint8_t addr[6]; char name[30]; };
+static Nick s_nick[48];
+static volatile int s_nNick = 0;
+static bool s_nickLoaded = false;
+static const char* NICK_FILE = "/SensorLab/ble_names.csv";
+
+const char* bleNickname(const uint8_t* addrLE) {
+  for (int i = 0; i < s_nNick; i++) if (!memcmp(s_nick[i].addr, addrLE, 6)) return s_nick[i].name;
+  return nullptr;
+}
+
+static void nickPut(const uint8_t* addrLE, const char* name) {
+  for (int i = 0; i < s_nNick; i++) if (!memcmp(s_nick[i].addr, addrLE, 6)) { strlcpy(s_nick[i].name, name, sizeof(s_nick[i].name)); return; }
+  if (s_nNick >= 48) return;
+  memcpy(s_nick[s_nNick].addr, addrLE, 6);
+  strlcpy(s_nick[s_nNick].name, name, sizeof(s_nick[s_nNick].name));
+  s_nNick = s_nNick + 1;
+}
+
+void bleNicknamesLoad() {
+  if (s_nickLoaded) return;
+  s_nickLoaded = true;
+  if (!ui::sdReady() || !SD.exists(NICK_FILE)) return;
+  File f = SD.open(NICK_FILE);
+  while (f && f.available()) {
+    String l = f.readStringUntil('\n');
+    l.trim();
+    unsigned v[6];
+    if (l.length() > 18 && sscanf(l.c_str(), "%2x:%2x:%2x:%2x:%2x:%2x", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) == 6) {
+      uint8_t a[6];
+      for (int i = 0; i < 6; i++) a[i] = v[5 - i];
+      nickPut(a, l.substring(18).c_str());
+    }
+  }
+  if (f) f.close();
+}
+
+// fixed = the address does not rotate, so the nickname is worth saving to the card
+static void nickSet(const uint8_t* addrLE, const char* name, bool fixed) {
+  nickPut(addrLE, name);
+  if (!fixed || !ui::sdMount()) return;
+  File f = SD.open(NICK_FILE, FILE_APPEND);
+  if (!f) return;
+  f.printf("%02X:%02X:%02X:%02X:%02X:%02X,%s\n", addrLE[5], addrLE[4], addrLE[3], addrLE[2], addrLE[1], addrLE[0], name);
+  f.close();
+}
+
 // ---- decoders for model information that devices broadcast without being connected to.
 // The Apple model codes come from community-maintained lists and may be incomplete.
 static const char* appleAudioModel(uint16_t m) {
@@ -281,7 +331,11 @@ class ScanCb : public NimBLEAdvertisedDeviceCallbacks {
 };
 static ScanCb s_cb;
 
+static bool addrFixed(const BleDev& d) { return d.addrType == 0 || (d.addrType == 1 && (d.addr[5] >> 6) == 3); }
+
 static String kindOf(const BleDev& d) {       // short human label for the list
+  const char* nk = bleNickname(d.addr);
+  if (nk) return String("*") + nk;            // * marks a device you tagged or connected to
   return bleDescribe(d.name, d.mfg, d.mfgLen, d.svc, d.svcDataUuid, d.svcData, d.svcDataLen, d.hasAppearance ? d.appearance : -1);
 }
 
@@ -387,6 +441,10 @@ static const char* gattName(const String& u) {
     {"0x2a50", "PnP ID"}, {"0x2a37", "Heart Rate Measurement"}, {"0x2a38", "Body Sensor Location"},
     {"0x2a6e", "Temperature"}, {"0x2a6f", "Humidity"}, {"0x2a6d", "Pressure"}, {"0x2a07", "TX Power Level"},
     {"0x2a2b", "Current Time"}, {"0x2aa6", "Central Address Resolution"}, {"0x2a4a", "HID Information"},
+    {"0x2a0f", "Local Time Information"}, {"0x2a14", "Reference Time Information"},
+    {"7905f431-b5ce-4e99-a40f-4b1e122d00d0", "Apple Notification Center"},
+    {"89d3502b-0f36-433a-8ef4-c502ad55f8dc", "Apple Media Service"},
+    {"d0611e78-bbb4-4591-a5f8-487910ae4366", "Apple Continuity"},
   };
   for (auto& t : T) if (u.equalsIgnoreCase(t.id)) return t.n;
   return nullptr;
@@ -456,6 +514,7 @@ static void gattExplore(const BleDev& d, NimBLEScan* scan) {
   if (mode == 1) lines.push_back(String("Pairing\t") + (paired ? "succeeded, link encrypted" : "failed (wrong passkey?)"));
   status("reading services...");
   int nSvc = 0, nChr = 0, nRead = 0, nDenied = 0;
+  String gotName, gotModel;
   std::vector<NimBLERemoteService*>* svcs = c->getServices(true);
   if (svcs) {
     for (auto* sv : *svcs) {
@@ -482,6 +541,8 @@ static void gattExplore(const BleDev& d, NimBLEScan* scan) {
         if (ch->canRead()) {
           snprintf(b, sizeof(b), "reading %d values...", nRead + 1); status(b);
           std::string v = ch->readValue();
+          if (v.size() && cu.equalsIgnoreCase("0x2a00")) gotName = v.c_str();
+          if (v.size() && cu.equalsIgnoreCase("0x2a24")) gotModel = v.c_str();
           if (v.size()) { lines.push_back(" \t" + gattValue(cu, v)); nRead++; }
           else { lines.push_back(" \t(no value / access denied)"); nDenied++; }
         }
@@ -496,6 +557,12 @@ static void gattExplore(const BleDev& d, NimBLEScan* scan) {
   snprintf(b, sizeof(b), "Values read\t%d (%d denied)", nRead, nDenied); lines.insert(lines.begin() + 2, b);
   if (dropped) lines.insert(lines.begin() + 3, "Note\tthe device closed the connection early");
   if (nDenied && mode == 0) lines.push_back("Some values need pairing: connect again and choose the passkey option.");
+  if (gotName.length() || gotModel.length()) {
+    String label = gotName.length() ? gotName : gotModel;
+    if (gotName.length() && gotModel.length()) label += " (" + gotModel + ")";
+    nickSet(d.addr, label.substring(0, 28).c_str(), addrFixed(d));
+    lines.insert(lines.begin() + 1, "Now listed as\t*" + label);
+  }
   ui::pager("BLE device contents", [&](std::vector<String>& L) { L = lines; }, 0, "ble_gatt");
 }
 
@@ -505,6 +572,7 @@ void appBle() {
   if (!s_b) { ui::toast("Out of memory", C_BAD); return; }
   s_nb = 0; s_advTotal = 0;
   ui::clear(); ui::header("BLE Scan"); cv.setTextColor(C_DIM, C_BG); cv.setCursor(60, 60); cv.print("Starting Bluetooth..."); ui::push();
+  bleNicknamesLoad();
   NimBLEDevice::init("");
   NimBLEScan* scan = NimBLEDevice::getScan();
   scan->setAdvertisedDeviceCallbacks(&s_cb, true);
@@ -515,7 +583,9 @@ void appBle() {
   scan->start(0, nullptr, false);
   bool active = true, running = true;
 
-  int sel = 0, top = 0, sortMode = 0;
+  int sel = 0, top = 0, sortMode = 0, filter = 0;
+  static const char* const FILT[] = {"all", "near", "named", "no Apple", "connectable"};
+  int hidden = 0;
   uint32_t lastDraw = 0, rateAt = millis(), lastTotal = 0, rate = 0;
   std::vector<BleDev> snap;
 
@@ -541,6 +611,16 @@ void appBle() {
       if (running) scan->start(0, nullptr, false);
     }
     if (k.lc == 'x') { xSemaphoreTake(s_lock, portMAX_DELAY); s_nb = 0; xSemaphoreGive(s_lock); sel = 0; }
+    if (k.lc == 'f') { filter = (filter + 1) % 5; sel = top = 0; }
+    if (k.lc == 't' && sel < (int)snap.size()) {       // give the device your own name
+      const char* cur = bleNickname(snap[sel].addr);
+      String nm = cur ? cur : "";
+      if (ui::input("Your name for this device", nm, 26) && nm.length()) {
+        bool fixed = addrFixed(snap[sel]);
+        nickSet(snap[sel].addr, nm.c_str(), fixed);
+        ui::toast(fixed ? "Tagged and saved to the SD card" : "Tagged until its address changes", C_OK, 1200);
+      }
+    }
     if (k.lc == 's' && !snap.empty()) {
       if (!ui::sdMount()) ui::toast("No SD card", C_BAD);
       else {
@@ -570,6 +650,20 @@ void appBle() {
     xSemaphoreTake(s_lock, portMAX_DELAY);
     snap.assign(s_b, s_b + s_nb);
     xSemaphoreGive(s_lock);
+    if (filter) {
+      size_t before = snap.size();
+      snap.erase(std::remove_if(snap.begin(), snap.end(), [&](const BleDev& d) {
+        bool apple = d.mfgLen >= 2 && d.mfg[0] == 0x4C && d.mfg[1] == 0x00;
+        bool named = d.name[0] || bleNickname(d.addr);
+        switch (filter) {
+          case 1: return d.rssi < -60;                    // near: roughly within a couple of metres
+          case 2: return !named;
+          case 3: return apple && !bleNickname(d.addr);   // tagged Apple devices stay visible
+          default: return !d.connectable;
+        }
+      }), snap.end());
+      hidden = before - snap.size();
+    } else hidden = 0;
     std::sort(snap.begin(), snap.end(), [&](const BleDev& a, const BleDev& b) {
       if (sortMode == 1) return a.last > b.last;
       if (sortMode == 2) return (a.name[0] != 0) != (b.name[0] != 0) ? a.name[0] != 0 : strcmp(a.name, b.name) < 0;
@@ -580,8 +674,10 @@ void appBle() {
 
     ui::clear();
     char right[28];
-    snprintf(right, sizeof(right), "%d dev %lu/s %s", (int)snap.size(), (unsigned long)rate, !running ? "PAUSE" : active ? "act" : "pas");
-    ui::header("BLE Scan", right);
+    if (filter) snprintf(right, sizeof(right), "%d shown, %d hidden", (int)snap.size(), hidden);
+    else snprintf(right, sizeof(right), "%d dev %lu/s %s", (int)snap.size(), (unsigned long)rate, !running ? "PAUSE" : active ? "act" : "pas");
+    char title[32]; snprintf(title, sizeof(title), filter ? "BLE: %s" : "BLE Scan", FILT[filter]);
+    ui::header(title, right);
     if (sel < top) top = sel;
     if (sel >= top + ROWS) top = sel - ROWS + 1;
     for (int r = 0; r < ROWS && top + r < (int)snap.size(); r++) {
@@ -603,7 +699,7 @@ void appBle() {
       cv.fillRect(195, y + 1, q, 5, stale ? C_DIM : d.rssi > -60 ? C_OK : d.rssi > -80 ? C_YEL : C_WARN);
     }
     if (snap.empty()) { cv.setTextColor(C_DIM, C_BG); cv.setCursor(76, 60); cv.print("Scanning..."); }
-    ui::footer(sortMode == 0 ? "ENTER detail G connect S O:rssi P A X" : sortMode == 1 ? "ENTER detail G connect S O:new P A X" : "ENTER detail G connect S O:name P A X");
+    ui::footer("ENTER info G connect F filter T tag");
     ui::push();
   }
   scan->stop();

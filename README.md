@@ -156,7 +156,16 @@ service or appearance, or the manufacturer.
 | `A` | Active / passive scan |
 | `X` | Clear the list |
 | `S` | Save the list as CSV |
+| `F` | Filter: all, near (stronger than -60 dBm), named, no Apple, connectable |
+| `T` | Tag the selected device with your own name |
 | `G` | Connect to the selected device and read it (see below) |
+
+**Finding your own device in a crowd.** Hold it next to the Cardputer and press `F` for the *near*
+filter, or use *no Apple* to hide the usual crowd of phones and earbuds. Then tag it with `T`, or
+connect with `G`: a successful connection labels the device with the name and model it reports.
+Tagged devices are marked with `*` and also appear in Signal Hunt. Devices with a fixed address are
+remembered in `/SensorLab/ble_names.csv`; phones and earbuds rotate their address every 15 minutes
+or so, and their tag lasts only until that happens.
 
 **Connect and read (`G`).** SensorLab connects to the selected device, lists its services and
 characteristics, reads every value the device allows (name, model, serial, firmware and hardware
@@ -177,6 +186,7 @@ as you get closer.
 | Target list | `;` `.` | Move through the list |
 | Target list | `Tab` or `,` `/` | Switch between WiFi networks and BLE devices |
 | Target list | `Enter` | Lock on to the selected target |
+| Target list | `F` | BLE list filter: all, near, named, no Apple |
 | Target list | `X` | Clear the list |
 | Target list | `M` | Sound on / off |
 | Tracking | `M` or `Space` | Sound on / off |
@@ -372,6 +382,7 @@ SensorLab keeps everything it writes in `/SensorLab/`, numbered in sequence.
 | `imu_NNNN.csv` | IMU Motion log |
 | `batt_NNNN.csv` | Battery log |
 | `note_NNNN.txt` | Text Editor new notes |
+| `ble_names.csv` | Your BLE device tags |
 | `chip_`, `pins_`, `i2c_`, `sdcard_`, `wifi_ap_`, `wifi_dev_`, `ble_dev_`, `ble_gatt_`, `netinfo_`, `netdevices_NNNN.txt` | Saved reports and detail pages |
 
 **Vendor names:** a small table of network-card vendors is built in. For full coverage, add
