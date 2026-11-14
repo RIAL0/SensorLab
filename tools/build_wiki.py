@@ -191,7 +191,8 @@ def main():
     first_line = re.search(r"^\*\*(.+?)\*\*", intro, flags=re.M).group(1)
     summary = intro.split(first_line + "**", 1)[1].split("![", 1)[0].strip()
     home = f"# SensorLab\n\n**{first_line}**\n\n{summary}\n\n"
-    home += f'<img src="{RAW}docs/menu-16-tools.png" width="720" alt="SensorLab main menu">\n\n'
+    menu_img = re.search(r"\]\((docs/menu[^)]+)\)", intro).group(1)      # whatever image the README shows
+    home += f'<img src="{RAW}{menu_img}" width="720" alt="SensorLab main menu">\n\n'
     home += "## Start here\n\n"
     home += "- [[Installation]]: what you need and how to install with M5Launcher\n"
     home += "- [[Controls]]: the keys that work everywhere\n"
