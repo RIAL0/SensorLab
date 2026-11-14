@@ -6,7 +6,7 @@ SensorLab turns the Cardputer ADV into a pocket instrument: it shows what the ra
 the sensors measure, and what the board itself is made of. It is a single firmware image that
 installs from the SD card with [M5Launcher](https://github.com/bmorcelli/Launcher).
 
-![SensorLab main menu](docs/menu.png)
+![SensorLab main menu](docs/menu-16-tools.png)
 
 - 16 tools: WiFi, Bluetooth LE, audio, motion, files, battery and board diagnostics
 - Passive by default: scanning and monitoring only listen. Connecting to a network or a BLE device
