@@ -60,7 +60,6 @@ static uint32_t s_lastAct = 0;
 static uint8_t s_idle = 0;                 // 0 awake, 1 dimmed, 2 screen off
 
 void stayAwake() {
-  ledRefresh();
   s_lastAct = millis();
   if (s_idle) { s_idle = 0; M5Cardputer.Display.setBrightness(cfg.brightness); }
 }
@@ -69,7 +68,6 @@ static Key pollRaw();
 
 Key poll() {
   Key k = pollRaw();
-  ledRefresh();
   uint32_t now = millis();
   if (k.any) {
     bool wasOff = s_idle == 2;

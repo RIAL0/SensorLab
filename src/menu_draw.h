@@ -17,14 +17,14 @@ static const MenuItem MENU_ITEMS[] = {
   {"IMU Motion", "Gyro / accel XYZ, 3D view", 0xFD20, 1},
   {"File Manager", "Copy, move, rename, info, open", 0xC618, 9},
   {"Text Editor", "View + edit txt / md files", 0xFFDF, 14},
-  {"IR + LED", "IR transmitter, RGB LED", 0xF800, 11},
+  {"IR Sender", "Infrared remote test frames", 0xF800, 11},
   {"Battery", "Voltage, charge state, trend", 0xFFE0, 5},
   {"Chip Info", "ESP32-S3, flash, memory", 0xFFFF, 7},
   {"GPIO Pins", "Pin map + live states", 0xF81F, 6},
   {"I2C Scan", "Internal bus + Grove port", 0x07FF, 8},
   {"Keys+Speaker", "Keyboard matrix, tones", 0xFBE0, 10},
   {"Screen", "Panel info + test patterns", 0xAFE5, 12},
-  {"Settings", "Screen, LED, audio, USB drive", 0xBDF7, 16},
+  {"Settings", "Screen, audio, USB drive, tidy", 0xBDF7, 16},
 };
 static const int MENU_COUNT = sizeof(MENU_ITEMS) / sizeof(MENU_ITEMS[0]);
 
@@ -116,7 +116,7 @@ void drawMenuIcon(G& g, int id, int x, int y, uint16_t c, uint16_t bg) {
         for (int i = 0; i < 6; i++) g.fillRect(x + 3 + i * 4, y + 9 + r * 4, 2, 2, bg);
       g.fillRect(x + 7, y + 18, 14, 2, bg);
       break;
-    case 11:  // LED with rays
+    case 11:  // IR emitter with rays
       g.fillCircle(x + 9, y + 15, 7, c);
       g.fillRect(x + 2, y + 15, 15, 8, c);
       g.fillRect(x + 5, y + 23, 2, 4, c);

@@ -1,4 +1,4 @@
-// Settings: screen, idle behaviour, LED, audio defaults, USB drive mode, housekeeping.
+// Settings: screen, idle behaviour, audio defaults, USB drive mode, housekeeping.
 #include "apps.h"
 #include "settings.h"
 #include "ui.h"
@@ -13,22 +13,12 @@ static const uint16_t DIM_SEC[] = {0, 15, 30, 60, 120, 300};
 static const char* const DIM_TXT[] = {"never", "15 s", "30 s", "1 min", "2 min", "5 min"};
 static const uint16_t OFF_SEC[] = {0, 60, 120, 300, 600, 1800};
 static const char* const OFF_TXT[] = {"never", "1 min", "2 min", "5 min", "10 min", "30 min"};
-struct LedCol { const char* name; uint8_t r, g, b; };
-static const LedCol LED[] = {{"white", 255, 255, 255}, {"red", 255, 0, 0}, {"green", 0, 255, 0}, {"blue", 0, 0, 255},
-                             {"yellow", 255, 180, 0}, {"cyan", 0, 255, 255}, {"magenta", 255, 0, 255}, {"orange", 255, 80, 0}};
-static const int NLED = sizeof(LED) / sizeof(LED[0]);
-static const uint8_t LED_LEVEL[] = {10, 45, 150};
-static const char* const LEVEL_TXT[] = {"low", "medium", "high"};
-
 void cfgLoad() {
   s_prefs.begin("slcfg", false);
   Config d;
   cfg.brightness = s_prefs.getUChar("bright", d.brightness);
   cfg.dimIdx = min((int)s_prefs.getUChar("dim", d.dimIdx), 5);
   cfg.offIdx = min((int)s_prefs.getUChar("off", d.offIdx), 5);
-  cfg.ledOn = s_prefs.getBool("led", d.ledOn);
-  cfg.ledColor = min((int)s_prefs.getUChar("ledcol", d.ledColor), NLED - 1);
-  cfg.ledLevel = min((int)s_prefs.getUChar("ledlvl", d.ledLevel), 2);
   cfg.micGain = min((int)s_prefs.getUChar("mic", d.micGain), 10);
   cfg.volume = s_prefs.getUChar("vol", d.volume);
   if (cfg.brightness < 16) cfg.brightness = 16;
@@ -38,44 +28,8 @@ void cfgSave() {
   s_prefs.putUChar("bright", cfg.brightness);
   s_prefs.putUChar("dim", cfg.dimIdx);
   s_prefs.putUChar("off", cfg.offIdx);
-  s_prefs.putBool("led", cfg.ledOn);
-  s_prefs.putUChar("ledcol", cfg.ledColor);
-  s_prefs.putUChar("ledlvl", cfg.ledLevel);
   s_prefs.putUChar("mic", cfg.micGain);
   s_prefs.putUChar("vol", cfg.volume);
-}
-
-// The RGB LED is driven with the Arduino core's WS2812 routine. (The M5 library's own LED driver
-// is an empty stub on this toolchain, so M5.Led does nothing here.) On the ADV something makes the
-// LED drop back to dark a moment after it is set; the cause is not identified. As a workaround a
-// small background task re-sends the colour 100 times a second, which is too fast to see as
-// flashing and independent of what the foreground tool is doing.
-static volatile uint8_t s_ledNow[3] = {0, 0, 0};
-static volatile uint8_t s_ledOffWrites = 0;        // a few "dark" frames after switching off
-static TaskHandle_t s_ledTask = nullptr;
-
-static void ledTask(void*) {
-  for (;;) {
-    uint8_t r = s_ledNow[0], g = s_ledNow[1], b = s_ledNow[2];
-    if (r | g | b) neopixelWrite(21, r, g, b);
-    else if (s_ledOffWrites) { neopixelWrite(21, 0, 0, 0); s_ledOffWrites = s_ledOffWrites - 1; }
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-}
-
-void ledSet(uint8_t r, uint8_t g, uint8_t b) {
-  s_ledNow[0] = r; s_ledNow[1] = g; s_ledNow[2] = b;
-  if (!(r | g | b)) s_ledOffWrites = 3;
-  if (!s_ledTask) xTaskCreatePinnedToCore(ledTask, "led", 3072, nullptr, 1, &s_ledTask, 1);
-}
-
-void ledRefresh() {}        // kept for callers; the background task does the work
-
-void cfgApplyLed() {
-  if (!cfg.ledOn) { ledSet(0, 0, 0); return; }
-  const LedCol& c = LED[cfg.ledColor];
-  uint8_t l = LED_LEVEL[cfg.ledLevel];
-  ledSet(c.r * l / 255, c.g * l / 255, c.b * l / 255);
 }
 
 uint32_t cfgDimMs() { return DIM_SEC[cfg.dimIdx] * 1000UL; }
@@ -202,8 +156,8 @@ static void deleteGenerated(bool recordings) {
 }
 
 // ------------------------------------------------------------------ the menu
-enum { R_BRIGHT, R_DIM, R_OFF, R_LED, R_LEDCOL, R_LEDLVL, R_MIC, R_VOL, R_USB, R_DELLOG, R_DELREC, R_RESET, R_ABOUT, R_COUNT };
-static const char* const LABEL[] = {"Screen brightness", "Dim when idle", "Screen off when idle", "LED", "LED colour", "LED brightness",
+enum { R_BRIGHT, R_DIM, R_OFF, R_MIC, R_VOL, R_USB, R_DELLOG, R_DELREC, R_RESET, R_ABOUT, R_COUNT };
+static const char* const LABEL[] = {"Screen brightness", "Dim when idle", "Screen off when idle",
                                     "Mic gain (default)", "Sound volume", "USB drive mode (SD card)", "Delete log files",
                                     "Delete recordings", "Reset settings", "About"};
 
@@ -224,9 +178,6 @@ void appSettings() {
         case R_BRIGHT: cfg.brightness = constrain(cfg.brightness + s * 16, 16, 255); M5Cardputer.Display.setBrightness(cfg.brightness); changed = true; break;
         case R_DIM: cfg.dimIdx = (cfg.dimIdx + 6 + s) % 6; changed = true; break;
         case R_OFF: cfg.offIdx = (cfg.offIdx + 6 + s) % 6; changed = true; break;
-        case R_LED: cfg.ledOn = !cfg.ledOn; cfgApplyLed(); changed = true; break;
-        case R_LEDCOL: cfg.ledColor = (cfg.ledColor + NLED + s) % NLED; cfg.ledOn = true; cfgApplyLed(); changed = true; break;
-        case R_LEDLVL: cfg.ledLevel = (cfg.ledLevel + 3 + s) % 3; cfg.ledOn = true; cfgApplyLed(); changed = true; break;
         case R_MIC: cfg.micGain = constrain(cfg.micGain + s, 0, 10); changed = true; break;
         case R_VOL:
           cfg.volume = constrain(cfg.volume + s * 15, 0, 255); changed = true;
@@ -238,7 +189,7 @@ void appSettings() {
         case R_RESET:
           if (k.enter && ui::confirm("Reset all settings to defaults?")) {
             cfg = Config(); changed = true;
-            M5Cardputer.Display.setBrightness(cfg.brightness); cfgApplyLed();
+            M5Cardputer.Display.setBrightness(cfg.brightness);
             ui::toast("Settings reset");
           }
           break;
@@ -278,9 +229,6 @@ void appSettings() {
         case R_BRIGHT: snprintf(v, sizeof(v), "%d%%", cfg.brightness * 100 / 255); break;
         case R_DIM: snprintf(v, sizeof(v), "%s", DIM_TXT[cfg.dimIdx]); break;
         case R_OFF: snprintf(v, sizeof(v), "%s", OFF_TXT[cfg.offIdx]); break;
-        case R_LED: snprintf(v, sizeof(v), "%s", cfg.ledOn ? "on" : "off"); vc = cfg.ledOn ? C_OK : C_DIM; break;
-        case R_LEDCOL: snprintf(v, sizeof(v), "%s", LED[cfg.ledColor].name); vc = cv.color565(LED[cfg.ledColor].r, LED[cfg.ledColor].g, LED[cfg.ledColor].b); break;
-        case R_LEDLVL: snprintf(v, sizeof(v), "%s", LEVEL_TXT[cfg.ledLevel]); break;
         case R_MIC: snprintf(v, sizeof(v), "+%d dB", cfg.micGain * 3); break;
         case R_VOL: snprintf(v, sizeof(v), "%d%%", cfg.volume * 100 / 255); break;
         default: snprintf(v, sizeof(v), "ENTER"); vc = C_DIM; break;

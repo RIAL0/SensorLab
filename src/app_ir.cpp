@@ -1,6 +1,5 @@
-// IR transmitter test (IR LED on GPIO44) and the Stamp RGB LED (GPIO21).
+// IR transmitter test (IR LED on GPIO44).
 #include "apps.h"
-#include "settings.h"
 #include "ui.h"
 
 #define DISABLE_CODE_FOR_RECEIVER
@@ -12,11 +11,9 @@ void appIr() {
   IrSender.begin(DISABLE_LED_FEEDBACK);
   IrSender.setSendPin(IR_TX_PIN);
   static const char* protos[] = {"NEC", "Samsung", "Sony 12-bit", "RC5"};
-  int proto = 0, field = 0, led = 0;
+  int proto = 0, field = 0;
   uint16_t addr = 0x00, cmd = 0x45;
   uint32_t sent = 0, flashUntil = 0;
-  static const uint8_t ledCols[][3] = {{0, 0, 0}, {40, 0, 0}, {0, 40, 0}, {0, 0, 40}, {40, 40, 40}};
-  static const char* ledNames[] = {"off", "red", "green", "blue", "white"};
   bool dirty = true;
   while (true) {
     ui::Key k = ui::poll();
@@ -27,10 +24,6 @@ void appIr() {
     if (k.up || k.down) {
       int step = k.up ? 1 : -1;
       if (field == 0) addr = (addr + step) & 0xFF; else cmd = (cmd + step) & 0xFF;
-    }
-    if (k.lc == 'l') {
-      led = (led + 1) % 5;
-      ledSet(ledCols[led][0], ledCols[led][1], ledCols[led][2]);
     }
     if (k.enter || k.space) {
       switch (proto) {
@@ -46,7 +39,7 @@ void appIr() {
     if (!dirty) { delay(15); continue; }
     dirty = false;
     ui::clear();
-    ui::header("IR + LED Test");
+    ui::header("IR Sender");
     int y = TOP + 4;
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, y); cv.print("Protocol");
     cv.setTextColor(C_FG, C_BG); cv.setCursor(80, y); cv.print(protos[proto]);
@@ -60,15 +53,12 @@ void appIr() {
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, y); cv.print("Sent");
     cv.setTextColor(C_FG, C_BG); cv.setCursor(80, y); cv.printf("%lu frames  38 kHz  GPIO44", (unsigned long)sent);
     y += 12;
-    cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, y); cv.print("RGB LED");
-    cv.setTextColor(C_FG, C_BG); cv.setCursor(80, y); cv.printf("%s  (GPIO21)", ledNames[led]);
     if (flashUntil) { cv.fillCircle(214, TOP + 20, 10, C_BAD); cv.setTextColor(C_FG); cv.setCursor(205, TOP + 17); cv.print("TX"); }
     else cv.drawCircle(214, TOP + 20, 10, C_SEL);
     y += 16;
     cv.setTextColor(C_DIM, C_BG); cv.setCursor(4, y); cv.print("Tip: a phone camera shows the IR LED");
     cv.setCursor(4, y + 9); cv.print("flashing violet when a frame is sent.");
-    ui::footer("ENTER send P proto ,// ;/. edit L led");
+    ui::footer("ENTER send  P protocol  ,// ;/. edit");
     ui::push();
   }
-  cfgApplyLed();                 // back to the LED state chosen in Settings
 }

@@ -20,7 +20,6 @@ void setup() {
   M5Cardputer.Display.setRotation(1);
   cfgLoad();
   M5Cardputer.Display.setBrightness(cfg.brightness);
-  cfgApplyLed();
   ui::begin();
   ui::sdMount();
   analogSetPinAttenuation(10, ADC_11db);

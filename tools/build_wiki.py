@@ -24,7 +24,7 @@ SHOTS = {
     "IMU Motion": ["imu-attitude", "imu-bars"],
     "File Manager": ["file-manager"],
     "Text Editor": ["text-editor"],
-    "IR + LED": ["ir-led"],
+    "IR Sender": ["ir-sender"],
     "Battery": ["battery-charging"],
     "Chip Info": ["chip-info"],
     "GPIO Pins": ["gpio-pins"],

@@ -6,9 +6,6 @@ struct Config {
   uint8_t brightness = 140;   // backlight 16..255
   uint8_t dimIdx = 4;         // index into DIM_SEC: dim after 2 minutes
   uint8_t offIdx = 0;         // index into OFF_SEC: never switch the screen off
-  bool ledOn = false;         // RGB LED on the Stamp module (GPIO21)
-  uint8_t ledColor = 1;       // index into the colour table
-  uint8_t ledLevel = 0;       // 0 low, 1 medium, 2 high
   uint8_t micGain = 8;        // ES8311 PGA steps of 3 dB (0..10)
   uint8_t volume = 200;       // default speaker volume 0..255
 };
@@ -16,8 +13,5 @@ struct Config {
 extern Config cfg;
 void cfgLoad();
 void cfgSave();
-void cfgApplyLed();           // sets the LED to the configured state
-void ledSet(uint8_t r, uint8_t g, uint8_t b);   // set the LED colour
-void ledRefresh();            // re-sends the colour; called from ui::poll()
 uint32_t cfgDimMs();          // 0 = never
 uint32_t cfgOffMs();          // 0 = never

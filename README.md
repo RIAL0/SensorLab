@@ -6,7 +6,7 @@ SensorLab turns the Cardputer ADV into a pocket instrument: it shows what the ra
 the sensors measure, and what the board itself is made of. It is a single firmware image that
 installs from the SD card with [M5Launcher](https://github.com/bmorcelli/Launcher).
 
-![SensorLab main menu](docs/menu-17-tools.png)
+![SensorLab main menu](docs/menu-17-tools-v2.png)
 
 - 17 tools: WiFi, Bluetooth LE, audio, motion, files, battery, board diagnostics and settings
 - Passive by default: scanning and monitoring only listen. Connecting to a network or a BLE device
@@ -28,8 +28,8 @@ Photos of SensorLab running on a Cardputer ADV.
 | Spectrogram | Sound Player | IMU attitude |
 | <img src="docs/screens/imu-bars.jpg" width="260" alt="IMU bars"> | <img src="docs/screens/file-manager.jpg" width="260" alt="File Manager"> | <img src="docs/screens/text-editor.jpg" width="260" alt="Text Editor"> |
 | IMU bars | File Manager | Text Editor |
-| <img src="docs/screens/ir-led.jpg" width="260" alt="IR + LED"> | <img src="docs/screens/battery-charging.jpg" width="260" alt="Battery"> | <img src="docs/screens/chip-info.jpg" width="260" alt="Chip Info"> |
-| IR + LED | Battery | Chip Info |
+| <img src="docs/screens/ir-sender.jpg" width="260" alt="IR Sender"> | <img src="docs/screens/battery-charging.jpg" width="260" alt="Battery"> | <img src="docs/screens/chip-info.jpg" width="260" alt="Chip Info"> |
+| IR Sender | Battery | Chip Info |
 | <img src="docs/screens/gpio-pins.jpg" width="260" alt="GPIO Pins"> | <img src="docs/screens/i2c-scan.jpg" width="260" alt="I2C Scan"> | <img src="docs/screens/keys.jpg" width="260" alt="Keys + Speaker"> |
 | GPIO Pins | I2C Scan | Keys + Speaker |
 
@@ -54,7 +54,7 @@ Some photos were taken with earlier versions, so small details differ from the c
 |---|---|
 | Board | M5Stack **Cardputer ADV** (StampS3A, ESP32-S3, 8 MB flash) |
 | Display | 1.14" ST7789V2, 240 x 135 |
-| Used by SensorLab | WiFi 2.4 GHz, Bluetooth LE, ES8311 audio codec (mic + speaker), BMI270 IMU, TCA8418 keyboard, IR LED, RGB LED, microSD, battery voltage |
+| Used by SensorLab | WiFi 2.4 GHz, Bluetooth LE, ES8311 audio codec (mic + speaker), BMI270 IMU, TCA8418 keyboard, IR LED, microSD, battery voltage |
 | microSD | Optional, FAT32. Needed for recording, logging, the File Manager, the Text Editor and the Sound Player |
 
 SensorLab is written for the **ADV**. On the original Cardputer it starts and warns that the ADV
@@ -315,9 +315,10 @@ Because `;` `.` `,` `/` have to type as ordinary characters here, cursor keys ne
 
 Long lines scroll sideways. Files over 48 KB open read-only and show the first part.
 
-### 10. IR + LED
+### 10. IR Sender
 
-Sends a test infrared frame and cycles the RGB LED. A phone camera shows the IR LED flashing.
+Sends test infrared frames in common remote-control formats. A phone camera shows the IR LED
+flashing.
 
 | Key | Action |
 |---|---|
@@ -325,7 +326,6 @@ Sends a test infrared frame and cycles the RGB LED. A phone camera shows the IR 
 | `,` `/` or `Tab` | Select the address or the command field |
 | `;` `.` | Change the selected value |
 | `Enter` or `Space` | Send |
-| `L` | RGB LED: off, red, green, blue, white |
 
 ### 11. Battery
 
@@ -402,9 +402,6 @@ Preferences that are remembered across restarts, plus housekeeping actions.
 | Screen brightness | 6% to 100% |
 | Dim when idle | never, 15 s, 30 s, 1 min, 2 min (default), 5 min |
 | Screen off when idle | never (default), 1, 2, 5, 10 or 30 min |
-| LED | on / off, for the RGB LED on the Stamp module |
-| LED colour | white, red, green, blue, yellow, cyan, magenta, orange |
-| LED brightness | low, medium, high |
 | Mic gain (default) | 0 to +30 dB; the level Mic Spectrum starts with |
 | Sound volume | default volume for the Sound Player and Signal Hunt |
 

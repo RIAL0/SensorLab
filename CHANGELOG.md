@@ -2,11 +2,13 @@
 
 ## 1.9
 
-- New **Settings** tool: screen brightness, dim and screen-off when idle, LED on/off with colour and
-  brightness, default mic gain and sound volume.
+- New **Settings** tool: screen brightness, dim and screen-off when idle, default mic gain and sound
+  volume.
 - **USB drive mode**: the microSD card appears on a computer as a USB drive.
 - Delete all log files or all recordings in one step; reset settings; About page.
 - Signal Hunt and the Sound Player keep the screen awake while in use.
+- The IR + LED tool is now **IR Sender**: its RGB LED control is removed, because the LED could not
+  be driven reliably on the ADV.
 
 ## 1.8
 
