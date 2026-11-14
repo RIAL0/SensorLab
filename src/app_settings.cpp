@@ -156,9 +156,9 @@ static void deleteGenerated(bool recordings) {
 }
 
 // ------------------------------------------------------------------ the menu
-enum { R_BRIGHT, R_DIM, R_OFF, R_MIC, R_VOL, R_USB, R_DELLOG, R_DELREC, R_RESET, R_ABOUT, R_COUNT };
+enum { R_BRIGHT, R_DIM, R_OFF, R_MIC, R_VOL, R_WEB, R_USB, R_DELLOG, R_DELREC, R_RESET, R_ABOUT, R_COUNT };
 static const char* const LABEL[] = {"Screen brightness", "Dim when idle", "Screen off when idle",
-                                    "Mic gain (default)", "Sound volume", "USB drive mode (SD card)", "Delete log files",
+                                    "Mic gain (default)", "Sound volume", "Web mode (WiFi + browser)", "USB drive mode (SD card)", "Delete log files",
                                     "Delete recordings", "Reset settings", "About"};
 
 void appSettings() {
@@ -183,6 +183,7 @@ void appSettings() {
           cfg.volume = constrain(cfg.volume + s * 15, 0, 255); changed = true;
           spk.begin(); spk.setVolume(cfg.volume); spk.tone(880, 60);      // let the new level be heard
           break;
+        case R_WEB: if (k.enter) appWeb(); break;
         case R_USB: if (k.enter) usbDrive(); break;
         case R_DELLOG: if (k.enter) deleteGenerated(false); break;
         case R_DELREC: if (k.enter) deleteGenerated(true); break;
@@ -196,7 +197,7 @@ void appSettings() {
         case R_ABOUT:
           if (k.enter) ui::pager("About", [](std::vector<String>& L) {
             L.push_back("#SensorLab");
-            L.push_back("Version\t1.9");
+            L.push_back("Version\t" SL_VERSION);
             L.push_back("Built\t" __DATE__);
             L.push_back("For\tM5Stack Cardputer ADV");
             L.push_back("Licence\tMIT");
@@ -221,7 +222,7 @@ void appSettings() {
       bool on = i == sel;
       uint16_t bg = on ? C_SEL : C_BG;
       if (on) cv.fillRect(0, y - 1, SCR_W, LINE_H, bg);
-      bool action = i >= R_USB;
+      bool action = i >= R_WEB;
       cv.setTextColor(on ? C_FG : action ? C_ACC : C_DIM, bg); cv.setCursor(4, y); cv.print(LABEL[i]);
       char v[24] = "";
       uint16_t vc = C_YEL;
@@ -235,7 +236,7 @@ void appSettings() {
       }
       cv.setTextColor(vc, bg); cv.setCursor(SCR_W - 4 - (int)strlen(v) * 6, y); cv.print(v);
     }
-    ui::footer(sel >= R_USB ? ";/. select   ENTER run   ` back" : ";/. select   ,// change   ` back");
+    ui::footer(sel >= R_WEB ? ";/. select   ENTER run   ` back" : ";/. select   ,// change   ` back");
     ui::push();
   }
   if (changed) cfgSave();

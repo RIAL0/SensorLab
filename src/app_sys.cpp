@@ -1,5 +1,6 @@
 // Battery, GPIO pin map, and ESP32-S3 chip information.
 #include "apps.h"
+#include "settings.h"
 #include "ui.h"
 #include <WiFi.h>
 #include <esp_chip_info.h>
@@ -367,7 +368,7 @@ void appChip() {
     esp_chip_info(&ci);
     L.push_back("#Board");
     L.push_back(String("Detected\t") + boardName());
-    L.push_back("Firmware\tSensorLab 1.9  " __DATE__);
+    L.push_back("Firmware\tSensorLab " SL_VERSION "  " __DATE__);
     snprintf(b, sizeof(b), "Uptime\t%lu s", (unsigned long)(millis() / 1000)); L.push_back(b);
     L.push_back(String("Last reset\t") + resetName(esp_reset_reason()));
     L.push_back("#CPU");

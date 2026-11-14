@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SensorLab</title>
+<style>
+:root{--bg:#10141a;--pn:#1a212b;--ln:#2c3745;--fg:#e6edf3;--dim:#8b98a8;--ac:#35b5ff;--ok:#3fd17a;--bad:#ff5d5d;--warn:#ffb340}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--pn);border-bottom:1px solid var(--ln);flex-wrap:wrap}
+header b{color:var(--ac);font-size:17px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:1px solid transparent;color:var(--dim);padding:6px 12px;border-radius:6px;font:inherit;cursor:pointer}
+nav button.on{color:var(--fg);border-color:var(--ln);background:var(--bg)}
+#stat{margin-left:auto;color:var(--dim);font-size:13px}
+main{padding:14px;max-width:980px;margin:auto}
+button,input,select,textarea{font:inherit}
+.btn{background:var(--pn);border:1px solid var(--ln);color:var(--fg);padding:6px 12px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--ac)}
+.btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.path{font-family:ui-monospace,Consolas,monospace;color:var(--ac);word-break:break-all}
+table{width:100%;border-collapse:collapse}
+td,th{padding:7px 8px;border-bottom:1px solid var(--ln);text-align:left;vertical-align:middle}
+th{color:var(--dim);font-weight:500;font-size:13px}
+tr:hover td{background:#141b24}
+td.r,th.r{text-align:right;white-space:nowrap}
+a{color:var(--fg);text-decoration:none;cursor:pointer}
+a:hover{color:var(--ac)}
+.dir a{color:var(--warn)}
+.act button{background:none;border:0;color:var(--dim);cursor:pointer;padding:2px 6px}
+.act button:hover{color:var(--ac)}
+.act button.x:hover{color:var(--bad)}
+.kv{display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px}
+.kv div:nth-child(odd){color:var(--dim)}
+h3{margin:18px 0 8px;font-size:15px;color:var(--warn);font-weight:600}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:14px;margin-bottom:12px}
+textarea{width:100%;height:60vh;background:#0b0f14;color:var(--fg);border:1px solid var(--ln);border-radius:6px;padding:10px;font:13px/1.4 ui-monospace,Consolas,monospace}
+#dlg{position:fixed;inset:0;background:#000b;display:none;padding:3vh 3vw;overflow:auto}
+#dlg .card{max-width:980px;margin:auto}
+.meter{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;border:1px solid var(--ln)}
+.meter i{display:block;height:100%;background:var(--ok)}
+label.row{display:grid;grid-template-columns:minmax(120px,220px) 1fr 70px;gap:12px;align-items:center;margin:10px 0}
+input[type=range]{width:100%}
+select{background:var(--bg);color:var(--fg);border:1px solid var(--ln);border-radius:6px;padding:5px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--pn);border:1px solid var(--ac);padding:8px 16px;border-radius:8px;display:none}
+.muted{color:var(--dim);font-size:13px}
+.drop{border:2px dashed var(--ln);border-radius:8px;padding:12px;text-align:center;color:var(--dim);margin-top:10px}
+.drop.over{border-color:var(--ac);color:var(--ac)}
+@media(max-width:560px){.hide-s{display:none}td,th{padding:7px 4px}}
+</style>
+</head>
+<body>
+<header><b>SensorLab</b>
+<nav id="nav"><button data-t="files" class="on">Files</button><button data-t="sys">System</button><button data-t="wifi">WiFi scan</button><button data-t="set">Settings</button></nav>
+<span id="stat"></span></header>
+<main>
+<section id="files">
+ <div class="bar"><button class="btn" id="up">Up</button><span class="path" id="cwd">/</span></div>
+ <div class="bar"><button class="btn" id="mk">New folder</button><button class="btn" id="nf">New text file</button>
+  <label class="btn">Upload<input id="upl" type="file" multiple hidden></label><button class="btn" id="rf">Refresh</button></div>
+ <table><thead><tr><th>Name</th><th class="r">Size</th><th class="r">Actions</th></tr></thead><tbody id="list"></tbody></table>
+ <div class="drop" id="drop">Drop files here to upload to this folder</div>
+ <div id="prog" class="muted"></div>
+</section>
+<section id="sys" hidden><div id="sysbody"></div></section>
+<section id="wifi" hidden>
+ <div class="bar"><button class="btn" id="scan">Scan now</button><span class="muted" id="scanst">Scanning briefly interrupts this page's connection.</span></div>
+ <table><thead><tr><th>Network</th><th class="hide-s">Address</th><th class="r">Ch</th><th class="r">Signal</th><th>Security</th></tr></thead><tbody id="aps"></tbody></table>
+</section>
+<section id="set" hidden><div class="card" id="setbody"></div><p class="muted">Changes apply at once and are saved on the device.</p></section>
+</main>
+<div id="dlg"><div class="card"><div class="bar"><b id="dt" class="path"></b><span style="flex:1"></span>
+ <button class="btn" id="dsave">Save</button><button class="btn" id="dclose">Close</button></div><div id="dbody"></div></div></div>
+<div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id), enc=encodeURIComponent;
+const TEXT=/\.(txt|md|csv|log|json|conf|cfg|ini|js|py|html?|xml|ya?ml|c|h|cpp|sh|bat|sub|ir|ino|css)$/i;
+let cwd='/SensorLab', editPath=null;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const human=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?(n/1024).toFixed(1)+' KB':n+' B';
+const join=(d,n)=>(d==='/'?'':d)+'/'+n;
+function toast(m,bad){const t=$('toast');t.textContent=m;t.style.borderColor=bad?'var(--bad)':'var(--ac)';t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
+async function api(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error((await r.text())||r.status);return r}
+async function post(u,body){return api(u,{method:'POST',body:body||''})}
+
+/* ---------- files ---------- */
+async function load(){
+  $('cwd').textContent=cwd;
+  let items;
+  try{items=await(await api('/api/list?path='+enc(cwd))).json()}
+  catch(e){if(cwd!=='/'){cwd='/';return load()}toast('Cannot read the SD card: '+e.message,1);return}
+  items.sort((a,b)=>(b.d-a.d)||a.n.toLowerCase().localeCompare(b.n.toLowerCase()));
+  const tb=$('list');tb.innerHTML='';
+  if(!items.length)tb.innerHTML='<tr><td colspan="3" class="muted">Empty folder</td></tr>';
+  for(const it of items){
+    const p=join(cwd,it.n),tr=document.createElement('tr');
+    if(it.d)tr.className='dir';
+    tr.innerHTML='<td><a>'+(it.d?'&#128193; ':'')+esc(it.n)+'</a></td><td class="r">'+(it.d?'folder':human(it.s))+'</td>'+
+      '<td class="r act">'+(it.d?'':'<button title="Download" data-a="dl">&#8681;</button>')+
+      '<button title="Rename" data-a="rn">&#9998;</button><button class="x" title="Delete" data-a="rm">&#10005;</button></td>';
+    tr.querySelector('a').onclick=()=>it.d?(cwd=p,load()):openFile(p,it);
+    tr.querySelectorAll('button').forEach(b=>b.onclick=()=>act(b.dataset.a,p,it));
+    tb.appendChild(tr);
+  }
+}
+async function act(a,p,it){
+  try{
+    if(a==='dl'){location.href='/api/get?dl=1&path='+enc(p);return}
+    if(a==='rn'){const n=prompt('New name',it.n);if(!n||n===it.n)return;await post('/api/rename?from='+enc(p)+'&to='+enc(join(cwd,n)));toast('Renamed')}
+    if(a==='rm'){if(!confirm('Delete '+it.n+(it.d?' and everything inside it?':'?')))return;await post('/api/delete?path='+enc(p));toast('Deleted')}
+    load();
+  }catch(e){toast(e.message,1)}
+}
+function showDlg(title,html,canSave){$('dt').textContent=title;$('dbody').innerHTML=html;$('dsave').style.display=canSave?'':'none';$('dlg').style.display='block'}
+async function openFile(p,it){
+  const u='/api/get?path='+enc(p);
+  if(/\.wav$/i.test(p))return showDlg(p,'<audio controls autoplay style="width:100%" src="'+u+'"></audio>');
+  if(/\.(png|jpe?g|gif|bmp)$/i.test(p))return showDlg(p,'<img style="max-width:100%" src="'+u+'">');
+  if(TEXT.test(p)&&it.s<=65536){
+    try{
+      const t=await(await api(u)).text();editPath=p;
+      let extra='';
+      if(/\.csv$/i.test(p)){
+        const rows=t.trim().split(/\r?\n/).slice(0,400).map(l=>l.split(','));
+        extra='<details><summary class="muted">Show as table</summary><div style="overflow:auto"><table>'+rows.map((r,i)=>'<tr>'+r.map(c=>(i?'<td>':'<th>')+esc(c.replace(/^"|"$/g,''))+(i?'</td>':'</th>')).join('')+'</tr>').join('')+'</table></div></details>';
+      }
+      showDlg(p,'<textarea id="ed" spellcheck="false"></textarea>'+extra,true);$('ed').value=t;
+    }catch(e){toast(e.message,1)}
+    return;
+  }
+  location.href=u+'&dl=1';
+}
+$('dsave').onclick=async()=>{try{await post('/api/save?path='+enc(editPath),$('ed').value);toast('Saved');load()}catch(e){toast('Save failed: '+e.message,1)}};
+$('dclose').onclick=()=>{$('dlg').style.display='none';$('dbody').innerHTML=''};
+$('up').onclick=()=>{if(cwd!=='/'){cwd=cwd.slice(0,cwd.lastIndexOf('/'))||'/';load()}};
+$('rf').onclick=load;
+$('mk').onclick=async()=>{const n=prompt('Folder name');if(!n)return;try{await post('/api/mkdir?path='+enc(join(cwd,n)));load()}catch(e){toast(e.message,1)}};
+$('nf').onclick=async()=>{let n=prompt('File name','note.txt');if(!n)return;if(!/\./.test(n))n+='.txt';try{await post('/api/save?new=1&path='+enc(join(cwd,n)),'');await load();openFile(join(cwd,n),{s:0})}catch(e){toast(e.message,1)}};
+async function upload(files){
+  for(const f of files){
+    $('prog').textContent='Uploading '+f.name+' ('+human(f.size)+')...';
+    const fd=new FormData();fd.append('f',f,f.name);
+    try{await api('/api/upload?path='+enc(cwd),{method:'POST',body:fd})}catch(e){toast('Upload failed: '+e.message,1);break}
+  }
+  $('prog').textContent='';load();
+}
+$('upl').onchange=e=>{upload([...e.target.files]);e.target.value=''};
+const dz=$('drop');
+['dragenter','dragover'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over')}));
+addEventListener('drop',e=>{if(e.dataTransfer.files.length)upload([...e.dataTransfer.files])});
+
+/* ---------- system ---------- */
+async function sys(){
+  try{
+    const s=await(await api('/api/sys')).json();
+    $('stat').textContent='v'+s.version+' · battery '+s.battPct+'%';
+    if($('sys').hidden)return;
+    const sdp=s.sdTotal?Math.round(s.sdUsed*100/s.sdTotal):0;
+    const kv=o=>'<div class="kv">'+Object.entries(o).map(([k,v])=>'<div>'+esc(k)+'</div><div>'+v+'</div>').join('')+'</div>';
+    $('sysbody').innerHTML=
+     '<div class="card"><h3 style="margin-top:0">Device</h3>'+kv({'Firmware':'SensorLab '+esc(s.version)+' ('+esc(s.built)+')','Board':esc(s.board),'Uptime':Math.floor(s.uptime/60)+' min '+(s.uptime%60)+' s','MAC address':esc(s.mac)})+'</div>'+
+     '<div class="card"><h3 style="margin-top:0">Battery</h3>'+kv({'Level':s.battPct+' %<div class="meter"><i style="width:'+s.battPct+'%"></i></div>','Voltage':s.battV.toFixed(3)+' V'})+'<p class="muted">Estimated from voltage; the ADV has no fuel gauge.</p></div>'+
+     '<div class="card"><h3 style="margin-top:0">Processor and memory</h3>'+kv({'Chip':esc(s.chip)+', '+s.cores+' cores, '+s.cpuMHz+' MHz','Die temperature':s.tempC.toFixed(1)+' °C','Free memory':human(s.heapFree)+' (lowest '+human(s.heapMin)+')','Flash':human(s.flash),'Firmware size':human(s.fwSize)})+'</div>'+
+     '<div class="card"><h3 style="margin-top:0">SD card</h3>'+(s.sdTotal?kv({'Used':human(s.sdUsed)+' of '+human(s.sdTotal)+' ('+sdp+'%)<div class="meter"><i style="width:'+sdp+'%"></i></div>','Free':human(s.sdTotal-s.sdUsed)}):'No card')+'</div>';
+  }catch(e){$('stat').textContent='device not responding'}
+}
+
+/* ---------- wifi scan ---------- */
+let scanning=false;
+async function scan(){
+  if(scanning)return;scanning=true;$('scanst').textContent='Scanning...';
+  for(let i=0;i<40;i++){
+    try{
+      const r=await(await api('/api/scan')).json();
+      if(r.state==='done'){
+        r.aps.sort((a,b)=>b.rssi-a.rssi);
+        $('aps').innerHTML=r.aps.map(a=>'<tr><td>'+(a.ssid?esc(a.ssid):'<span class="muted">hidden</span>')+'</td><td class="hide-s path">'+esc(a.bssid)+'</td><td class="r">'+a.ch+'</td><td class="r">'+a.rssi+' dBm</td><td>'+esc(a.auth)+'</td></tr>').join('')||'<tr><td colspan="5" class="muted">No networks found</td></tr>';
+        $('scanst').textContent=r.aps.length+' networks found';scanning=false;return;
+      }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,700));
+  }
+  $('scanst').textContent='Scan did not finish; try again.';scanning=false;
+}
+$('scan').onclick=scan;
+
+/* ---------- settings ---------- */
+const DIM=['never','15 s','30 s','1 min','2 min','5 min'],OFF=['never','1 min','2 min','5 min','10 min','30 min'];
+async function settings(){
+  try{
+    const s=await(await api('/api/settings')).json();
+    const sel=(id,opts,v)=>'<select id="'+id+'">'+opts.map((o,i)=>'<option value="'+i+'"'+(i==v?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+    $('setbody').innerHTML=
+     '<label class="row"><span>Screen brightness</span><input type="range" id="s_b" min="16" max="255" value="'+s.brightness+'"><span id="v_b"></span></label>'+
+     '<label class="row"><span>Dim when idle</span>'+sel('s_dim',DIM,s.dim)+'<span></span></label>'+
+     '<label class="row"><span>Screen off when idle</span>'+sel('s_off',OFF,s.off)+'<span></span></label>'+
+     '<label class="row"><span>Mic gain (default)</span><input type="range" id="s_mic" min="0" max="10" value="'+s.mic+'"><span id="v_mic"></span></label>'+
+     '<label class="row"><span>Sound volume</span><input type="range" id="s_vol" min="0" max="255" value="'+s.vol+'"><span id="v_vol"></span></label>';
+    const show=()=>{$('v_b').textContent=Math.round($('s_b').value*100/255)+'%';$('v_mic').textContent='+'+$('s_mic').value*3+' dB';$('v_vol').textContent=Math.round($('s_vol').value*100/255)+'%'};
+    const send=async()=>{show();try{await post('/api/settings?b='+$('s_b').value+'&dim='+$('s_dim').value+'&off='+$('s_off').value+'&mic='+$('s_mic').value+'&vol='+$('s_vol').value)}catch(e){toast(e.message,1)}};
+    ['s_b','s_dim','s_off','s_mic','s_vol'].forEach(i=>{$(i).onchange=send;$(i).oninput=show});show();
+  }catch(e){toast(e.message,1)}
+}
+
+/* ---------- tabs ---------- */
+function tab(t){
+  document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==t);
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(t==='files')load();if(t==='sys')sys();if(t==='set')settings();
+}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+load();sys();setInterval(sys,5000);
+</script>
+</body>
+</html>

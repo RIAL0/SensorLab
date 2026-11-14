@@ -2,6 +2,8 @@
 #pragma once
 #include <Arduino.h>
 
+#define SL_VERSION "2.0"
+
 struct Config {
   uint8_t brightness = 140;   // backlight 16..255
   uint8_t dimIdx = 4;         // index into DIM_SEC: dim after 2 minutes

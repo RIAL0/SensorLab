@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0
+
+- **Web mode** (in Settings): the Cardputer becomes a password-protected WiFi access point with a
+  browser interface for the SD card (browse, download, upload, edit, rename, delete), system
+  information, a WiFi scan and the settings.
+
 ## 1.9
 
 - New **Settings** tool: screen brightness, dim and screen-off when idle, default mic gain and sound

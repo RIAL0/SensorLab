@@ -407,6 +407,7 @@ Preferences that are remembered across restarts, plus housekeeping actions.
 
 | Action | What it does |
 |---|---|
+| Web mode (WiFi + browser) | Turns the Cardputer into a WiFi access point with a browser interface (see below) |
 | USB drive mode (SD card) | Shows the microSD card to a computer as a USB drive over the USB-C port. Leaving the mode restarts the Cardputer |
 | Delete log files | Removes every numbered `.csv` and `.txt` file SensorLab created in `/SensorLab`, after confirmation |
 | Delete recordings | Removes every `rec_NNNN.wav`, after confirmation |
@@ -422,6 +423,23 @@ Preferences that are remembered across restarts, plus housekeeping actions.
 Any key wakes a dimmed screen. When the screen is off, the first key press only wakes it. Signal
 Hunt and the Sound Player keep the screen on while they are tracking or playing. Delete actions
 never touch your notes, `ble_names.csv` or `oui.csv`.
+
+**Web mode.** The Cardputer creates its own password-protected WiFi network and shows the network
+name, the password and the address `192.168.4.1` on its screen. Join that network with a phone or
+computer and open the address in a browser:
+
+| Page | What you can do |
+|---|---|
+| Files | Browse the SD card; download, upload (button or drag and drop), rename and delete; create folders and text files |
+| Editor | Edit text files up to 64 KB in the browser; CSV files can also be shown as a table; WAV files play and images open in the page |
+| System | Firmware version, battery, processor, memory and SD card usage, refreshed every few seconds |
+| WiFi scan | A list of nearby networks with channel, signal and security |
+| Settings | The same settings as on the device |
+
+The password is generated once and kept; press `R` on the web mode screen for a new one. Web mode
+ends when you press `Enter` on the Cardputer. While it runs, the radio is busy being an access
+point, so the other WiFi and Bluetooth tools are not available. On a phone, switch off mobile data
+if the page does not load, because the Cardputer's network has no internet access.
 
 USB drive mode is slow, because the card is connected over SPI: expect it to suit small files, not
 large copies. Eject the drive on the computer before leaving the mode.
@@ -490,6 +508,7 @@ release, run that workflow from the Actions tab with a version such as `v1.8`, o
 | `src/settings.h` | Persistent settings shared by the tools |
 | `preview/preview.cpp` | Renders the main menu on a PC with the same drawing code (needs SDL2) |
 | `release/` | Ready-to-install firmware image |
+| `web/index.html` | The browser interface for web mode; `tools/embed_web.py` packs it into `src/web_page.h` |
 | `tools/build_wiki.py` | Builds the [wiki](https://github.com/RIAL0/SensorLab/wiki) pages from this README |
 
 To add a tool: write `void appMyTool()` in a new `src/app_*.cpp`, declare it in `src/apps.h`, add a
@@ -503,7 +522,9 @@ and scan requests every phone sends when it lists nearby networks and devices, a
 tools to capture credentials, break passwords or disrupt a network.
 
 Two actions do connect, and only when you start them: joining a WiFi network with its password
-(`J` in WiFi Scan) and connecting to a BLE device to read it (`G` in BLE Scan). Use them on networks
+(`J` in WiFi Scan) and connecting to a BLE device to read it (`G` in BLE Scan). Web mode goes the
+other way: it creates a network of its own, protected by a password, so that you can reach the
+Cardputer; anyone who has that password can read and change the files on the SD card. Use them on networks
 and devices that are yours or that you have permission to examine. Listing the devices on a network
 you do not administer, or connecting to someone else's device, may be unlawful where you are.
 

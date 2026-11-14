@@ -25,3 +25,4 @@ void appKeys();
 void appIr();
 void appScreen();
 void appSettings();
+void appWeb();                                            // Web mode, started from Settings
