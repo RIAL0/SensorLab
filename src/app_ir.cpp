@@ -30,7 +30,7 @@ void appIr() {
     }
     if (k.lc == 'l') {
       led = (led + 1) % 5;
-      neopixelWrite(21, ledCols[led][0], ledCols[led][1], ledCols[led][2]);
+      ledSet(ledCols[led][0], ledCols[led][1], ledCols[led][2]);
     }
     if (k.enter || k.space) {
       switch (proto) {

@@ -45,11 +45,23 @@ void cfgSave() {
   s_prefs.putUChar("vol", cfg.volume);
 }
 
+// The M5 library owns the RGB LED and redraws it from its own buffer on every update, so the
+// colour has to be set through M5.Led; writing to the pin directly is overwritten at once.
+void ledSet(uint8_t r, uint8_t g, uint8_t b) {
+  if (M5.Led.isEnabled()) {
+    M5.Led.setBrightness(255);
+    M5.Led.setAllColor(r, g, b);
+    M5.Led.display();
+  } else {
+    neopixelWrite(21, r, g, b);
+  }
+}
+
 void cfgApplyLed() {
-  if (!cfg.ledOn) { neopixelWrite(21, 0, 0, 0); return; }
+  if (!cfg.ledOn) { ledSet(0, 0, 0); return; }
   const LedCol& c = LED[cfg.ledColor];
   uint8_t l = LED_LEVEL[cfg.ledLevel];
-  neopixelWrite(21, c.r * l / 255, c.g * l / 255, c.b * l / 255);
+  ledSet(c.r * l / 255, c.g * l / 255, c.b * l / 255);
 }
 
 uint32_t cfgDimMs() { return DIM_SEC[cfg.dimIdx] * 1000UL; }
