@@ -2,7 +2,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define SL_VERSION "2.0"
+#define SL_VERSION "2.0.1"
 
 struct Config {
   uint8_t brightness = 140;   // backlight 16..255

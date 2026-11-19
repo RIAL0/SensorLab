@@ -93,14 +93,30 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
   memcpy(s_tgt, t.addr, 6);
   s_tgtType = t.addrType;
   s_rssi = t.rssi; s_hits = 0; s_lastHit = millis();
-  if (!ble) {
-    WiFi.scanDelete();
+  // WiFi: the target list scans continuously, so a scan is usually still running at this point.
+  // A running scan moves the radio back to another channel when it ends, which left the tracker
+  // listening on the wrong channel ("SIGNAL LOST" after a moment). Stop it and wait it out first.
+  uint8_t curCh = t.ch;
+  uint8_t bssid[6];
+  memcpy(bssid, t.addr, 6);
+  auto sniffOn = [&]() {
     wifi_promiscuous_filter_t flt = {.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA};
     esp_wifi_set_promiscuous_filter(&flt);
     esp_wifi_set_promiscuous_rx_cb(&wifiSniff);
     esp_wifi_set_promiscuous(true);
-    esp_wifi_set_channel(t.ch, WIFI_SECOND_CHAN_NONE);
+    esp_wifi_set_channel(curCh, WIFI_SECOND_CHAN_NONE);
+  };
+  if (!ble) {
+    esp_wifi_scan_stop();
+    uint32_t t0 = millis();
+    while (WiFi.scanComplete() == WIFI_SCAN_RUNNING && millis() - t0 < 600) delay(10);
+    WiFi.scanDelete();
+    sniffOn();
   }
+  // Recovery when the target goes quiet: put the radio back on the channel, and if that does not
+  // help, look for the target with a short scan for its address (it may have changed channel).
+  bool probing = false, probeAll = false;
+  uint32_t lastChk = millis(), probeStart = 0, probeEnd = millis(), probes = 0;
   s_locked = true;
   auto& spk = M5Cardputer.Speaker;
   spk.begin();
@@ -130,7 +146,42 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
       slow = slow * 0.97f + r * 0.03f;                // slow average: the reference for warmer / colder
       if (ema > peak) peak = (int)ema;
     }
-    bool lost = now - s_lastHit > 4000;
+    if (!ble) {
+      if (!probing && now - lastChk >= 500) {                 // keep the radio on the target's channel
+        lastChk = now;
+        uint8_t pc = 0; wifi_second_chan_t sc;
+        if (esp_wifi_get_channel(&pc, &sc) == ESP_OK && pc != curCh) esp_wifi_set_channel(curCh, WIFI_SECOND_CHAN_NONE);
+      }
+      if (!probing && now - s_lastHit > 1500 && now - probeEnd > 800) {
+        esp_wifi_set_promiscuous(false);
+        WiFi.scanDelete();
+        // first look on the known channel (fast); every other try, sweep all channels
+        int16_t r = WiFi.scanNetworks(true, true, false, 150, probeAll ? 0 : curCh, nullptr, bssid);
+        if (r == WIFI_SCAN_RUNNING) { probing = true; probeStart = now; probes++; }
+        else { sniffOn(); probeEnd = now; }
+        probeAll = !probeAll;
+      }
+      if (probing) {
+        int n = WiFi.scanComplete();
+        if (n >= 0 || n == WIFI_SCAN_FAILED || now - probeStart > 3500) {
+          for (int i = 0; i < n; i++) {
+            if (!memcmp(WiFi.BSSID(i), bssid, 6)) {
+              s_rssi = WiFi.RSSI(i);
+              curCh = WiFi.channel(i);                       // follow the target if it moved channel
+              s_lastHit = millis();
+              s_hits = s_hits + 1;
+              break;
+            }
+          }
+          if (n < 0) esp_wifi_scan_stop();
+          WiFi.scanDelete();
+          probing = false;
+          probeEnd = millis();
+          sniffOn();
+        }
+      }
+    }
+    bool lost = now - s_lastHit > 5000;
     if (now - rateAt >= 1000) { rate = hits - rateHits; rateHits = hits; rateAt = now; }
     if (now - lastHist >= 250) {
       lastHist = now;
@@ -149,7 +200,7 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
     ui::clear();
     char right[20];
     if (ble) snprintf(right, sizeof(right), "BLE %lu/s", (unsigned long)rate);
-    else snprintf(right, sizeof(right), "ch%d %lu/s", t.ch, (unsigned long)rate);
+    else snprintf(right, sizeof(right), "ch%d %lu/s%s", curCh, (unsigned long)rate, probing ? " ?" : "");
     char title[32]; snprintf(title, sizeof(title), "Hunt %.20s", t.name[0] ? t.name : ui::mac(t.addr).c_str());
     ui::header(title, right);
 
@@ -195,7 +246,13 @@ static void track(const Target& t, bool ble, bool& sound, int& volume) {
   }
   s_locked = false;
   spk.stop();
-  if (!ble) { esp_wifi_set_promiscuous(false); esp_wifi_set_promiscuous_rx_cb(nullptr); }
+  if (!ble) {
+    esp_wifi_set_promiscuous(false);
+    esp_wifi_set_promiscuous_rx_cb(nullptr);
+    if (probing) esp_wifi_scan_stop();
+    WiFi.scanDelete();
+  }
+  (void)probes;
 }
 
 void appHunt() {

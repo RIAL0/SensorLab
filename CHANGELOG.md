@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Signal Hunt (WiFi): fixed tracking stopping a couple of seconds after locking on. A scan left
+  running by the target list moved the radio off the target's channel; it is now stopped first.
+- Signal Hunt (WiFi): the radio is kept on the target's channel, and if the target goes quiet a
+  short scan for its address finds it again, including when it has moved to another channel.
+
 ## 2.0
 
 - **Web mode** (in Settings): the Cardputer becomes a password-protected WiFi access point with a
